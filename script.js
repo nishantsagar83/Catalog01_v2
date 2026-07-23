@@ -1,7 +1,6 @@
 
+console.log("JavaScript is successfully linked!");
 
-
-   <script>
         let rawExcelData = [];
         // Local state object mapping item codes to user selection counts
         let orderBasket = {}; 
@@ -433,5 +432,3 @@ function buildNormalizedArray(data) {
     });
 }
 
-
-    </script>

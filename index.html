@@ -104,7 +104,7 @@
     // Fetch the JSON file dynamically
     async function loadCatalogData() {
         try {
-            const response = await fetch('./data.json');
+            const response = await fetch('./products.json');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -150,7 +150,6 @@
                     code: String(getField(item, ["Item Code", "ItemCode", "code"])),
                     name: String(getField(item, ["Item Name", "ItemName", "name"])),
                     category: String(getField(item, ["Category", "category", "cat"])),
-                    driveImg: String(getField(item, ["Product Image", "ProductImage", "image"])),
                     relativeImg: String(getField(item, ["Product Image1", "ProductImage1", "image1"]))
                 });
             }

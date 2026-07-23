@@ -474,6 +474,8 @@ function normalizeData(item) {
     // 1. Secure the unique identifier from your actual JSON keys ("Item Code")
     const itemCode = item['Item Code'] || item.code || item.id || item.itemCode;
     const itemName = item['Item Name'] || item.name || item.title;
+    const itemName = item['Category'] || item.category;
+    const itemName = item['Product Image'] || item.productImage;
 
     if (!itemCode) {
         console.warn("Skipping record: Payload entry lacks an 'Item Code' definition.", item);
@@ -553,7 +555,9 @@ function normalizeData(item) {
                 
                 var matchesCategory = (selectedCategory === 'all' || item.category === selectedCategory);
                 var matchesSearch = (item.name.toLowerCase().indexOf(searchTerm) !== -1 || 
-                                     item.code.toLowerCase().indexOf(searchTerm) !== -1);
+                                     item.code.toLowerCase().indexOf(searchTerm) !== -1 || 
+                                     item.category.toLowerCase().indexOf(searchTerm) !== -1 || 
+                                     item.productImage.toLowerCase().indexOf(searchTerm) !== -1);
 
                 if (matchesCategory && matchesSearch) {
                     matchCount++;
@@ -566,10 +570,10 @@ function normalizeData(item) {
 htmlString += `
     <div class="card">
         <div class="image-container">
-            <img src="${finalImg}" alt="${item.name.replace(/"/g, '&quot;')}" onerror="this.src='https://placehold.co'">
+            <img src="${finalImg}" alt="${item.productImage.replace(/"/g, '&quot;')}" onerror="this.src='https://placehold.co'">
         </div>
         <div class="card-content">
-            <span class="category-badge">${item.category || 'General'}</span>
+            <span class="category-badge">${item.category}</span>
             <h3 class="item-name" title="${item.name.replace(/"/g, '&quot;')}">${item.name}</h3>
             <div class="card-footer">
                 <span class="item-code">${item.code}</span>
@@ -683,6 +687,7 @@ function generatePDF() {
     doc.setTextColor(0);
     doc.text("Code", 14, 42);
     doc.text("Item Name Description", 45, 42);
+    doc.text("Category Description", 45, 42);
     doc.text("Qty", 180, 42);
     doc.text("--------------------------------------------------------------------------------", 14, 46);
     
@@ -742,6 +747,7 @@ function shareToWhatsApp() {
 
         message += index++ + ". *Code:* `" + code + "`\n";
         message += "   *Item:* " + (item ? item.name : 'Unknown') + "\n";
+        message += "   *Category:* " + (item ? item.category : 'Unknown') + "\n";
         message += "   *Qty:* " + qty + " pcs\n\n";
     }
 

@@ -355,12 +355,11 @@
         <div class="grid" id="productGrid"></div>
     </main>
 
-    <script>
+   <script>
         let rawExcelData = [];
-/*Object to store item quantities dynamically. Key: item code/id, Value: quantity */
-        let orderBasket = {};
+        // Local state object mapping item codes to user selection counts
+        let orderBasket = {}; 
 
-        
         async function loadCatalogData() {
             try {
                 const response = await fetch('./products.json');
@@ -376,7 +375,6 @@
             }
         }
 
-        
         function initCatalog() {
             normalizeData();
             populateCategories();
@@ -411,6 +409,7 @@
                     relativeImg: String(getField(item, ["Product Image1", "ProductImage1", "image1"]))
                 });
             }
+            document.getElementById('itemCount').textContent = normalizedProducts.length;
         }
 
         function populateCategories() {
@@ -432,8 +431,7 @@
             filterSelect.innerHTML = html;
         }
 
-               
-                function renderCatalog() {
+        function renderCatalog() {
             var grid = document.getElementById('productGrid');
             var selectedCategory = document.getElementById('categoryFilter').value;
             var searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -482,86 +480,67 @@
             }
         }
 
-            // Update item count badge
-            countSpan.innerText = matchCount;
-
-            // Display results or standard placeholder text if search matches nothing
-            if (matchCount === 0) {
-                grid.innerHTML = '<div class="no-results">No items found matching your criteria.</div>';
-            } else {
-                grid.innerHTML = htmlString;
-            }
-
-
-            filteredData.forEach(item => {
-                // Determine current quantity from local basket state
-                const currentQty = orderBasket[item.code] || 0;
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = '<div class="image-container"> <img src="${item.image}" alt="${item.name}"> </div>
-                    <div class="card-content"> 
-                        <span class="category-badge">${item.category}</span> 
-                                 <div class="item-name" title="${item.name}">${item.name}</div> 
-                                <div class="card-footer"> <span class="item-code">${item.code}</span> 
-                    <div class="qty-controls"> 
-                        <button class="qty-btn" onclick="updateQty('${item.code}', -1)">-</button> 
-                        <input type="number" class="qty-input" id="input-${item.code}"  value="${currentQty}" min="0" onchange="handleInputChange('${item.code}', this.value)"> 
-                        <button class="qty-btn" onclick="updateQty('${item.code}', 1)">+</button> </div> 
-                </div> 
-                </div>';
-                
-            grid.appendChild(card);});}
-        
-        // Handle adjustments from + and - buttons
+        // Manage increment and decrement button tracking states
         function updateQty(itemCode, change) {
             let currentQty = orderBasket[itemCode] || 0;
             let newQty = currentQty + change;
-            if (newQty < 0) newQty = 0;
-            if (newQty === 0) {
+            
+            if (newQty <= 0) {
                 delete orderBasket[itemCode];
+                newQty = 0;
             } else {
                 orderBasket[itemCode] = newQty;
             }
             
-            document.getElementById(input-${itemCode}).value = newQty;
-            calculateTotals();}
-        // Handle typed input entries
+            const inputField = document.getElementById(`input-${itemCode}`);
+            if (inputField) inputField.value = newQty;
+            calculateTotals();
+        }
+
+        // Manage keypress keyboard values input overrides
         function handleInputChange(itemCode, value) {
             let parsedValue = parseInt(value, 10);
             if (isNaN(parsedValue) || parsedValue <= 0) {
                 delete orderBasket[itemCode];
-                document.getElementById(input-${itemCode}).value = 0;
+                parsedValue = 0;
             } else {
                 orderBasket[itemCode] = parsedValue;
-                document.getElementById(input-${itemCode}).value = parsedValue;
             }
-            calculateTotals();}
-        
-        // Global aggregation for the order banner
+            
+            const inputField = document.getElementById(`input-${itemCode}`);
+            if (inputField) inputField.value = parsedValue;
+            calculateTotals();
+        }
+
+        // Calculate active values and toggle bottom floating bar view state
         function calculateTotals() {
             let uniqueItemsCount = Object.keys(orderBasket).length;
             let totalQuantity = Object.values(orderBasket).reduce((sum, qty) => sum + qty, 0);
-            
+
             document.getElementById('totalItemsSelected').textContent = uniqueItemsCount;
             document.getElementById('totalQtySelected').textContent = totalQuantity;
+
             const orderBar = document.getElementById('orderSummaryBar');
-            
             if (totalQuantity > 0) {
                 orderBar.classList.add('active');
             } else {
-                orderBar.classList.remove('active');}}
-        
-        // Final payload handler
+                orderBar.classList.remove('active');
+            }
+        }
+
+        // Log final layout structure to review selections
         function submitOrder() {
             const finalOrder = Object.keys(orderBasket).map(code => {
-                const itemDetails = rawExcelData.find(i => i.code === code);
-                return {code: code,name: itemDetails ? itemDetails.name : 'Unknown',quantity: orderBasket[code]};});
-            
-            console.log("Submitted Order Structure:", finalOrder);
-            alert("Order Summary logged to system console!\n\nUnique Items: " + finalOrder.length);}
-        // Launch catalog execution on document ready
-        
-        window.addEventListener('DOMContentLoaded', loadCatalogData);
+                const itemDetails = normalizedProducts.find(i => i.code === code);
+                return {
+                    code: code,
+                    name: itemDetails ? itemDetails.name : 'Unknown',
+                    quantity: orderBasket[code]
+                };
+            });
+
+            console.log("Current Final Order:", finalOrder);
+            alert("Order compilation captured in the browser console tool!\nUnique items selected: " + finalOrder.length);
         }
     </script>
 </body>

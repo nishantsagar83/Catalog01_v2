@@ -241,38 +241,47 @@ async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // --- COMPANY BRANDING HEADER ---
+    // --- COMPANY BRANDING & CONTACT HEADER ---
     
-    // 1. Add Logo
+    // 1. Logo
     const logoImg = await loadImage('images/SMT_LOGO-1.png');
     if (logoImg) {
         try {
-            doc.addImage(logoImg, 'PNG', 14, 12, 22, 22); // Logo x=14, y=12, width=22, height=22
+            doc.addImage(logoImg, 'PNG', 14, 10, 22.5, 18.8);
         } catch (e) {
             console.error("Logo failed to render:", e);
         }
     }
 
-    // 2. Company Name "SAMRAT"
+    // 2. Company Name & Subheading (Left Side)
     doc.setFont("Colonna MT", "normal");
-    doc.setFontSize(26);
-    doc.setTextColor(10, 80, 160); // Blue color (#0A50A0)
-    doc.text("SAMRAT", 40, 22);
+    doc.setFontSize(18);
+    doc.setTextColor(10, 80, 160); // Blue (#0A50A0)
+    doc.text("SAMRAT", 40, 18);
 
-    // 3. Subheading "Machine & Tools LLC."
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(8);
+    doc.setTextColor(80);
+    doc.text("Machine & Tools LLC.", 40, 24);
+
+    // 3. Contact Info (Right Side Aligned)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
     doc.setTextColor(100);
-    doc.text("Machine & Tools LLC.", 40, 28);
+
+    const rightX = 195;
+    doc.text("Phone: +971-54-2243526/27", rightX, 15, { align: "right" });
+    doc.text("Email: dxb@samratco.com", rightX, 20, { align: "right" });
+    doc.text("Address: Shop No. 7 & 8, Building No. 2, Gold Souk, Al Ras, Deira, Dubai - UAE", rightX, 25, { align: "right" });
 
     // 4. Header Divider Line
     doc.setDrawColor(200);
     doc.setLineWidth(0.5);
-    doc.line(14, 37, 195, 37);
+    doc.line(14, 33, 195, 33);
 
     // --- ORDER DETAILS ---
     
-    let yPosition = 45;
+    let yPosition = 42;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(0);
@@ -327,11 +336,11 @@ async function generatePDF() {
 
                 doc.addImage(imgElement, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
             } catch (e) {
-                // Handle unsupported format quietly
+                // Ignore unsupported formats quietly
             }
         }
 
-        // Item Text Rows
+        // Item Details
         const truncatedName = item.name.length > 40 ? item.name.substring(0, 37) + '...' : item.name;
 
         doc.setFont("helvetica", "normal");
@@ -366,6 +375,5 @@ async function generatePDF() {
 
     doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
 }
-
 
 

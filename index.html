@@ -1,49 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Client-side PDF Generation Engine Bundle (Contains jsPDF & html2canvas) -->
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
- <!-- Font Awesome 6 Icon Library hosted via Cloudflare cdnjs -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-     <!-- Link to external CSS -->
-    <link rel="stylesheet" href="style.css">
-   <!-- Link to external JS -->
-    <script src="script.js" defer></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMT Inventory Catalog</title>
-   
+
+    <!-- Font Awesome 6 Icon Library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Client-side PDF Generation Engine Bundle (jsPDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- External JS (defer ensures DOM parsing complete before script runs) -->
+    <script src="script.js" defer></script>
 </head>
 <body>
 
     <header>
-    <div class="header-container">
-        <div class="brand-group">
-            <h1>SMT Catalog</h1>
-            <!-- New Top Prompt Status Block -->
-            <div id="top-action-prompt" class="top-prompt-hidden">
-                <span class="prompt-text">Items Selected!</span>
-                <button class="btn btn-pdf btn-sm" onclick="generatePDF()">
-                    <i class="fa-solid fa-file-pdf"></i> Export Order PDF
-                </button>
+        <div class="header-container">
+            <div class="brand-group">
+                <h1>SMT Catalog</h1>
+                
+                <!-- Top Prompt Status Block -->
+                <div id="top-action-prompt">
+                    <span class="prompt-text">Items Selected!</span>
+                    <button class="submit-order-btn btn-sm" onclick="generatePDF()">
+                        <i class="fa-solid fa-file-pdf"></i> Export Order PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-wrapper">
+                <!-- IDs match script.js event listeners -->
+                <input type="text" id="searchInput" placeholder="Search item or code..." oninput="renderCatalog()">
+                <select id="categoryFilter" onchange="renderCatalog()">
+                    <option value="all">All Categories</option>
+                </select>
             </div>
         </div>
-        <div class="controls-wrapper">
-            <input type="text" id="search-bar" placeholder="Search item or code..." oninput="filterCatalog()">
-            <select id="category-filter" onchange="filterCatalog()">
-                <option value="all">All Categories</option>
-                <option value="ic">ICs & Chips</option>
-                <option value="passives">Passives</option>
-                <option value="connectors">Connectors</option>
-            </select>
-        </div>
-    </div>
-</header>
+    </header>
 
-
-<main class="catalog-container">
+    <main class="catalog-container">
+        <!-- Product Card Container -->
         <div class="grid" id="productGrid"></div>
     </main>
+
+    <!-- Floating Action Bar for Order Summaries -->
+    <div id="orderBar" class="order-bar">
+        <div class="order-bar-container">
+            <div class="order-summary-text">
+                Selected Items: <span id="totalSelectedCount">0</span>
+            </div>
+            <button class="submit-order-btn" onclick="generatePDF()">
+                <i class="fa-solid fa-file-pdf"></i> Generate Order PDF
+            </button>
+        </div>
+    </div>
 
 </body>
 </html>

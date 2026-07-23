@@ -422,19 +422,26 @@
         let orderBasket = {}; 
 
         async function loadCatalogData() {
-            try {
-                const response = await fetch('./products.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                rawExcelData = await response.json();
-                initCatalog(); 
-            } catch (error) {
-                console.error('Failed to load JSON data:', error);
-                document.getElementById('productGrid').innerHTML = 
-                    '<div class="no-results">Failed to load catalog data.</div>';
-            }
-        }
+    try {
+        const response = await fetch('./products.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        rawExcelData = await response.json();
+        
+        // 1. First, build the clean array tracking references
+        buildNormalizedArray(rawExcelData); 
+        
+        // 2. Second, dynamically generate and render all the HTML cards to the grid
+        renderCatalog(); 
+        
+        // 3. Third, sync only the basket quantities to the newly created input boxes
+        syncQuantities();
+        
+    } catch (error) {
+        console.error('Failed to load JSON data:', error);
+    }
+}
+
 
         function initCatalog(data) {
     if (!data || !Array.isArray(data)) return;
@@ -541,59 +548,66 @@ function normalizeData(item) {
             }
             filterSelect.innerHTML = html;
         }
+function renderCatalog() {
+    var grid = document.getElementById('productGrid');
+    var selectedCategory = document.getElementById('categoryFilter').value;
+    var searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
 
-        function renderCatalog() {
-            var grid = document.getElementById('productGrid');
-            var selectedCategory = document.getElementById('categoryFilter').value;
-            var searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    var htmlString = '';
+    var matchCount = 0;
 
-            var htmlString = '';
-            var matchCount = 0;
+    for (var i = 0; i < normalizedProducts.length; i++) {
+        var item = normalizedProducts[i];
+        
+        // Safety checks to handle missing data fields without throwing fatal crashes
+        var itemNameLower = (item.name || '').toLowerCase();
+        var itemCodeLower = (item.code || '').toLowerCase();
+        var itemCategoryLower = (item.category || '').toLowerCase();
 
-            for (var i = 0; i < normalizedProducts.length; i++) {
-                var item = normalizedProducts[i];
-                
-                var matchesCategory = (selectedCategory === 'all' || item.category === selectedCategory);
-                var matchesSearch = (item.name.toLowerCase().indexOf(searchTerm) !== -1 || 
-                                     item.code.toLowerCase().indexOf(searchTerm) !== -1 || 
-                                     item.category.toLowerCase().indexOf(searchTerm) !== -1 || 
-                                     item.productImage.toLowerCase().indexOf(searchTerm) !== -1);
+        var matchesCategory = (selectedCategory === 'all' || item.category === selectedCategory);
+        var matchesSearch = (itemNameLower.indexOf(searchTerm) !== -1 || 
+                             itemCodeLower.indexOf(searchTerm) !== -1 || 
+                             itemCategoryLower.indexOf(searchTerm) !== -1);
 
-                if (matchesCategory && matchesSearch) {
-                    matchCount++;
-                    
-                    var finalImg = item.relativeImg ? item.relativeImg : (item.driveImg ? item.driveImg : '');
-                    var currentQty = orderBasket[item.code] || 0;
+        if (matchesCategory && matchesSearch) {
+            matchCount++;
+            
+            // CRITICAL FIX: Forces reading from local image assets only, ignoring drive variables
+            var finalImg = item.relativeImg || './images/' + item.code + '.png';
+            var currentQty = orderBasket[item.code] || 0;
 
+            // Secure replacements to preserve layouts if product titles contain double quotes
+            var escapedName = (item.name || '').replace(/"/g, '&quot;');
 
-                  // Using template literals entirely eliminates '+' and complex quote nesting
-htmlString += `
-    <div class="card">
-        <div class="image-container">
-            <img src="${finalImg}" alt="${item.productImage.replace(/"/g, '&quot;')}" onerror="this.src='https://placehold.co'">
-        </div>
-        <div class="card-content">
-            <span class="category-badge">${item.category}</span>
-            <h3 class="item-name" title="${item.name.replace(/"/g, '&quot;')}">${item.name}</h3>
-            <div class="card-footer">
-                <span class="item-code">${item.code}</span>
-                <div class="qty-controls">
-                    <button class="qty-btn" onclick="updateQty('${escapeQuotes(item.code)}', -1)">-</button>
-                    <input type="number" class="qty-input" id="input-${item.code}" value="${currentQty}" min="0" onchange="handleInputChange('${escapeQuotes(item.code)}', this.value)">
-                    <button class="qty-btn" onclick="updateQty('${escapeQuotes(item.code)}', 1)">+</button>
+            // CRITICAL HOOK: Added the missing [data-code] selector context right inside the card container div
+            htmlString += `
+                <div class="card" data-code="${item.code}">
+                    <div class="image-container">
+                        <img src="${finalImg}" alt="${escapedName}" onerror="this.src='https://placehold.co'">
+                    </div>
+                    <div class="card-content">
+                        <span class="category-badge">${item.category || 'General'}</span>
+                        <h3 class="item-name" title="${escapedName}">${item.name}</h3>
+                        <div class="card-footer">
+                            <span class="item-code">${item.code}</span>
+                            <div class="qty-controls">
+                                <button class="qty-btn" onclick="updateQty('${escapeQuotes(item.code)}', -1)">-</button>
+                                <input type="number" class="qty-input" id="input-${item.code}" value="${currentQty}" min="0" onchange="handleInputChange('${escapeQuotes(item.code)}', this.value)">
+                                <button class="qty-btn" onclick="updateQty('${escapeQuotes(item.code)}', 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-`;              }
-            }
-
-            if (matchCount === 0) {
-                grid.innerHTML = '<div class="no-results">No items found matching your criteria.</div>';
-            } else {
-                grid.innerHTML = htmlString;
-            }
+            `;
         }
+    }
+
+    if (matchCount === 0) {
+        grid.innerHTML = '<div class="no-results">No items found matching your criteria.</div>';
+    } else {
+        grid.innerHTML = htmlString;
+    }
+}
 
         // Manage increment and decrement button tracking states
         function updateQty(itemCode, change) {
@@ -793,6 +807,47 @@ function shareToWhatsApp() {
 function escapeQuotes(str) {
     return String(str).replace(/'/g, "\\'").replace(/"/g, "&quot;");
 }
+function buildNormalizedArray(data) {
+    if (!data || !Array.isArray(data)) return;
+    normalizedProducts = [];
+    
+    data.forEach(item => {
+        const itemCode = item['Item Code'] || item.code;
+        if (itemCode) {
+            normalizedProducts.push({
+                code: itemCode,
+                name: item['Item Name'] || item.name,
+                category: item['Category'] || item.category,
+                relativeImg: item['Product Image1'] // <--- Focus explicitly on your local property key name
+            });
+        }
+    });
+    populateCategories();
+    renderCatalog();
+  syncQuantities();
+}
+
+     function syncQuantities() {
+    // Loop through everything currently in your JSON array data
+    rawExcelData.forEach(item => {
+        const itemCode = item['Item Code'] || item.code || item.id;
+        if (!itemCode) return;
+
+        // Look for the specific card input drawn by renderCatalog()
+        const cardElement = document.querySelector(`[data-code="${itemCode}"]`);
+        if (!cardElement) return;
+
+        const qtyInputNode = cardElement.querySelector('.qty-input') || 
+                             cardElement.querySelector('input[type="number"]');
+                             
+        if (qtyInputNode) {
+            // Read from your active selection object (orderBasket)
+            const storedQty = orderBasket[itemCode] ? orderBasket[itemCode] : 0;
+            qtyInputNode.value = storedQty;
+        }
+    });
+}
+
 
     </script>
 </body>

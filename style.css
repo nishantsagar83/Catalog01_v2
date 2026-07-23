@@ -571,3 +571,17 @@ img {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+.btn-logout {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s ease;
+}
+
+.btn-logout:hover {
+    background-color: #c82333;
+}

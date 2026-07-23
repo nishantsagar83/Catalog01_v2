@@ -317,79 +317,52 @@ function loadImage(url) {
     });
 }
 
-async function generatePDF() {
+function generatePDF() {
+    // 1. Validate logged in state
     if (!currentUser) {
-        alert("Please log in before generating an order.");
+        alert("Please log in before generating an order PDF.");
         return;
     }
 
-    const basketKeys = Object.keys(orderBasket);
-    if (basketKeys.length === 0) {
-        alert("Your order is empty. Please select quantity for at least one item.");
+    // 2. Get customer name input
+    const customerNameInput = document.getElementById("customerNameInput");
+    const customerName = customerNameInput ? customerNameInput.value.trim() : "";
+
+    if (!customerName) {
+        alert("Please enter the Customer Name before generating the PDF.");
+        if (customerNameInput) customerNameInput.focus();
         return;
     }
 
-    const customerInput = document.getElementById("customerNameInput");
-    const customerName = customerInput ? (customerInput.value.trim() || "N/A") : "N/A";
+    // 3. Extract user info safely matching your users.json key names
+    const repName = currentUser["User Name"] || currentUser.name || "Sales Rep";
+    const repId = currentUser["User Id"] || currentUser.id || "N/A";
+    const repRole = currentUser["Role"] || currentUser.role || "Sales";
 
-    const selectedItems = basketKeys.map(code => {
-        const product = normalizedProducts.find(p => p.code === code) || {};
-        return {
-            code: code,
-            name: product.name || 'Unknown Item',
-            category: product.category || 'Uncategorized',
-            image: product.image || `images/${code}.png`,
-            qty: orderBasket[code]
-        };
+    // 4. Get order date
+    const orderDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
     });
 
+    // --- jsPDF Implementation Example ---
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // 1. BRANDING HEADER
-    const logoImg = await loadImage('images/SMT_LOGO-1.png');
-    if (logoImg) {
-        try { doc.addImage(logoImg, 'PNG', 14, 10, 22, 18.4); } catch (e) {}
-    }
+    // Header / Branding
+    doc.setFontSize(18);
+    doc.text("PURCHASE ORDER", 14, 20);
 
-    doc.setFont("Colonna MT", "normal");
-    doc.setFontSize(24);
-    doc.setTextColor(10, 80, 160);
-    doc.text("SAMRAT", 40, 18);
+    // Order & Rep Details
+    doc.setFontSize(10);
+    doc.text(`Date: ${orderDate}`, 14, 30);
+    doc.text(`Customer Name: ${customerName}`, 14, 36);
+    doc.text(`Sales Representative: ${repName} (ID: ${repId})`, 14, 42);
+    doc.text(`Role: ${repRole}`, 14, 48);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(80);
-    doc.text("Machine & Tools LLC.", 40, 24);
-
-    const rightX = 195;
-    doc.setFontSize(8.5);
-    doc.setTextColor(100);
-    doc.text("Phone: +1 234 567 8900", rightX, 15, { align: "right" });
-    doc.text("Email: info@samrattools.com", rightX, 20, { align: "right" });
-    doc.text("Address: 123 Industrial Area, City", rightX, 25, { align: "right" });
-
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.5);
-    doc.line(14, 33, 195, 33);
-
-    // 2. ORDER & USER METADATA SECTION
-    let yPosition = 42;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text("PURCHASE ORDER", 14, yPosition);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, rightX, yPosition, { align: "right" });
-
-    yPosition += 6;
-    doc.setFontSize(9);
-    doc.text(`Customer Name: ${customerName}`, 14, yPosition);
-    doc.text(`Sales Representative: ${currentUser.name} (ID: ${currentUser.id})`, rightX, yPosition, { align: "right" });
-
+    doc.line(14, 52, 196, 52); // Divider line
+    
     // Table Headers
     yPosition += 10;
     doc.setFont("helvetica", "bold");
@@ -467,7 +440,10 @@ async function generatePDF() {
     doc.setFontSize(10);
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
-    doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
+    //doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
+
+    const filename = `Order_${customerName.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
+    doc.save(filename);
 
     // Reset customer field and clear order basket
     if (customerInput) customerInput.value = "";

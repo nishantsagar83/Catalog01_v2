@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+/*document.addEventListener('DOMContentLoaded', () => {
     const categories = new Set();
 
     // Load product data from JSON file (assuming inventory.json is in the same directory)
@@ -74,3 +74,4 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => console.error('Error loading data:', error));
 });
+*/

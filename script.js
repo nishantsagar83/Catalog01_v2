@@ -234,57 +234,48 @@ function handleLogin(event) {
         event.stopPropagation();
     }
 
-    console.log("--- LOGIN ATTEMPT STARTED ---");
-
-    const usernameElem = document.getElementById("usernameInput");
-    const passwordElem = document.getElementById("passwordInput");
+    const usernameInput = document.getElementById("usernameInput").value.trim();
+    const passwordInput = document.getElementById("passwordInput").value.trim();
     const loginError = document.getElementById("loginError");
-    const modal = document.getElementById("loginModal");
 
-    if (!usernameElem || !passwordElem) {
-        console.error("Missing input elements in DOM!");
-        return false;
-    }
+    console.log("Attempting login with:", { usernameInput, passwordInput });
+    console.log("Current systemUsers array:", systemUsers);
 
-    const usernameInput = usernameElem.value.trim();
-    const passwordInput = passwordElem.value.trim();
-
-    console.log("Entered Username:", usernameInput);
-    console.log("Entered Password:", passwordInput);
-    console.log("Available Users Array:", systemUsers);
-
-    // Fallback: force test user if systemUsers array is empty
+    // Guard against empty users array
     if (!systemUsers || systemUsers.length === 0) {
+        console.warn("systemUsers array is empty. Injecting temporary fallback user.");
         systemUsers = [
             { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" }
         ];
     }
 
-    const matchedUser = systemUsers.find(
-        u => String(u.name).toLowerCase() === usernameInput.toLowerCase() && String(u.password) === passwordInput
-    );
+    // Flexible search matching variations in property names (name/username) and data types
+    const matchedUser = systemUsers.find(u => {
+        const dbName = String(u.name || u.username || u.User || "").trim().toLowerCase();
+        const dbPass = String(u.password || u.Pass || "").trim();
+        
+        return dbName === usernameInput.toLowerCase() && dbPass === passwordInput;
+    });
 
     if (matchedUser) {
-        console.log("Match Found!", matchedUser);
+        console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
 
-        // Force Hide Modal
-        if (modal) {
-            modal.style.display = "none";
-            console.log("Modal display set to 'none'");
-        } else {
-            console.error("Element #loginModal not found in DOM!");
-        }
+        // Hide Modal
+        const modal = document.getElementById("loginModal");
+        if (modal) modal.style.display = "none";
 
-        // Update Header Displays safely
+        // Update Header User Display
         const userDisplay = document.getElementById("loggedInUserDisplay");
-        if (userDisplay) userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
+        if (userDisplay) {
+            userDisplay.innerText = `${currentUser.name || currentUser.username} (${currentUser.id})`;
+        }
 
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
     } else {
-        console.warn("No user match found.");
+        console.warn("Authentication failed. Inputs do not match systemUsers data.");
         if (loginError) {
             loginError.innerText = "Invalid Username or Password";
             loginError.style.display = "block";

@@ -98,36 +98,38 @@
 
     <script>
         // --- DATA ARRAY PLACEHOLDER ---
-        // Your 1,500+ records sit directly inside this variable array safely.
         let rawExcelData = [];
 
-    // Fetch the JSON file dynamically
-    async function loadCatalogData() {
-        try {
-            const response = await fetch('./products.json');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        // Fetch the JSON file dynamically
+        async function loadCatalogData() {
+            try {
+                const response = await fetch('./products.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                rawExcelData = await response.json();
+                
+                // Call initialization functions once data is ready
+                initCatalog(); 
+            } catch (error) {
+                console.error('Failed to load JSON data:', error);
+                document.getElementById('productGrid').innerHTML = 
+                    '<div class="no-results">Failed to load catalog data.</div>';
             }
-            rawExcelData = await response.json();
-            
-            // Call your initialization functions here once data is ready:
-            initCatalog(); 
-        } catch (error) {
-            console.error('Failed to load JSON data:', error);
-            document.getElementById('productGrid').innerHTML = 
-                '<div class="no-results">Failed to load catalog data.</div>';
         }
-    }
 
-    function initCatalog() {
-        // Run your rendering and event listener logic here
-        // e.g., renderCards(rawExcelData);
-        // populateCategories(rawExcelData);
-    }
+        function initCatalog() {
+            normalizeData();
+            populateCategories();
+            renderCatalog();
 
-    // Load data when the page finishes loading
-    document.addEventListener('DOMContentLoaded', loadCatalogData);
-        
+            // Set up search and filter real-time update listeners
+            document.getElementById('categoryFilter').addEventListener('change', renderCatalog);
+            document.getElementById('searchInput').addEventListener('input', renderCatalog);
+        }
+
+        // Load data when the page finishes loading
+        document.addEventListener('DOMContentLoaded', loadCatalogData);
 
         // Global arrays compatible with older browsers
         var normalizedProducts = [];
@@ -144,6 +146,7 @@
 
         // Initialize and clean up structural object naming variations
         function normalizeData() {
+            normalizedProducts = []; // Reset array
             for (var i = 0; i < rawExcelData.length; i++) {
                 var item = rawExcelData[i];
                 normalizedProducts.push({
@@ -161,7 +164,7 @@
             var categoriesMap = {};
             
             for (var i = 0; i < normalizedProducts.length; i++) {
-                if (normalizedProducts[i].category) {
+                if (normalizedProducts[i].category && normalizedProducts[i].category.trim() !== "") {
                     categoriesMap[normalizedProducts[i].category] = true;
                 }
             }
@@ -211,26 +214,16 @@
                 }
             }
 
+            // Update item count badge
+            countSpan.innerText = matchCount;
+
+            // Display results or standard placeholder text if search matches nothing
             if (matchCount === 0) {
-                grid.innerHTML = '<div class="no-results">No products matched your search.</div>';
+                grid.innerHTML = '<div class="no-results">No items found matching your criteria.</div>';
             } else {
                 grid.innerHTML = htmlString;
             }
-            
-            countSpan.innerHTML = matchCount;
         }
-
-        // Fallback attachment for event triggers
-        function setupListeners() {
-            document.getElementById('categoryFilter').onchange = renderCatalog;
-            document.getElementById('searchInput').oninput = renderCatalog;
-        }
-
-        // Standard execution sequence
-        normalizeData();
-        populateCategories();
-        renderCatalog();
-        setupListeners();
     </script>
 </body>
 </html>

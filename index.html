@@ -562,7 +562,7 @@ function normalizeData(item) {
                     var currentQty = orderBasket[item.code] || 0;
 
                     // Clean string concatenation that eliminates line-break bugs completely
-                    htmlString += '<div class="card">' +
+                    htmlString += "'<div class="card">' +
                         '<div class="image-container">' +
                             '<img src="' + finalImg + '" alt="' + item.name + '" onerror="this.src=\'https://placehold.co\'">' +
                         '</div>' +
@@ -578,7 +578,7 @@ function normalizeData(item) {
                                 '</div>' +
                             '</div>' +
                         '</div>' +
-                    '</div>';
+                    '</div>'";
                 }
             }
 

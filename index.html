@@ -474,8 +474,8 @@ function normalizeData(item) {
     // 1. Secure the unique identifier from your actual JSON keys ("Item Code")
     const itemCode = item['Item Code'] || item.code || item.id || item.itemCode;
     const itemName = item['Item Name'] || item.name || item.title;
-    const itemName = item['Category'] || item.category;
-    const itemName = item['Product Image'] || item.productImage;
+    const category = item['Category'] || item.category;
+    const productImage = item['Product Image'] || item.productImage;
 
     if (!itemCode) {
         console.warn("Skipping record: Payload entry lacks an 'Item Code' definition.", item);
@@ -709,7 +709,8 @@ function generatePDF() {
         
         doc.text(code, 14, yPosition);
         doc.text(itemName, 45, yPosition);
-        doc.text(String(qty), 180, yPosition);
+        doc.text(category, 180, yPosition);
+        doc.text(String(qty), 325, yPosition);
         
         yPosition += 10;
         

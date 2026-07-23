@@ -319,7 +319,7 @@ function loadImage(url) {
     });
 }
 
-function generatePDF() {
+async function generatePDF() {
     // 1. Validate logged in state
     if (!currentUser) {
         alert("Please log in before generating an order PDF.");

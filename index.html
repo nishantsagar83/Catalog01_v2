@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cloudflare.com"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMT Inventory Catalog</title>
@@ -542,6 +543,114 @@
             console.log("Current Final Order:", finalOrder);
             alert("Order compilation captured in the browser console tool!\nUnique items selected: " + finalOrder.length);
         }
+
+       // --- CONFIGURATION ---
+// Replace this with your company's mobile number (Country code + phone number, no '+' or spaces)
+const WHATSAPP_PHONE_NUMBER = "201000000000"; 
+
+// --- GENERATE PDF NATIVELY USING JSPDF ---
+function generatePDF() {
+    // Access the loaded window modules from jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const currentDate = new Date().toLocaleString();
+    
+    // Page Header Styling
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("SMT INVENTORY CATALOG ORDER", 14, 20);
+    
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("Date Generated: " + currentDate, 14, 28);
+    doc.text("--------------------------------------------------------------------------------", 14, 34);
+    
+    // Table Column Headers setup
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.text("Code", 14, 42);
+    doc.text("Item Name Description", 45, 42);
+    doc.text("Qty", 180, 42);
+    doc.text("--------------------------------------------------------------------------------", 14, 46);
+    
+    // Loop through order basket and print line records dynamically
+    doc.setFont("Helvetica", "normal");
+    let yPosition = 54;
+    let totalQty = 0;
+    
+    for (const code in orderBasket) {
+        const item = normalizedProducts.find(p => p.code === code);
+        const qty = orderBasket[code];
+        totalQty += qty;
+        
+        // Safety wrap: Truncate extra long item names so they do not overlap text rows
+        let itemName = item ? item.name : 'Unknown Product';
+        if (itemName.length > 55) {
+            itemName = itemName.substring(0, 52) + "...";
+        }
+        
+        doc.text(code, 14, yPosition);
+        doc.text(itemName, 45, yPosition);
+        doc.text(String(qty), 180, yPosition);
+        
+        yPosition += 10;
+        
+        // Page breaking protection: create a new page if the entries run low on space
+        if (yPosition > 275) {
+            doc.addPage();
+            yPosition = 20;
+        }
+    }
+    
+    // Table Footer calculation summaries
+    doc.text("--------------------------------------------------------------------------------", 14, yPosition);
+    doc.setFont("Helvetica", "bold");
+    yPosition += 10;
+    doc.text("Unique Items Ordered: " + Object.keys(orderBasket).length, 14, yPosition);
+    doc.text("Total Quantity: " + totalQty + " pcs", 140, yPosition);
+    
+    // Instantly save and prompt file download to device filesystem
+    doc.save("SMT-Order-" + new Date().toISOString().slice(0,10) + ".pdf");
+}
+
+// --- OPTIMIZED WHATSAPP DELIVERABILITY ---
+function shareToWhatsApp() {
+    let message = "🛍️ *NEW SMT INVENTORY ORDER*\n";
+    message += "📅 Date: " + new Date().toLocaleDateString() + "\n";
+    message += "─────────────────────\n\n";
+
+    let index = 1;
+    let totalQty = 0;
+
+    for (const code in orderBasket) {
+        const item = normalizedProducts.find(p => p.code === code);
+        const qty = orderBasket[code];
+        totalQty += qty;
+
+        message += index++ + ". *Code:* `" + code + "`\n";
+        message += "   *Item:* " + (item ? item.name : 'Unknown') + "\n";
+        message += "   *Qty:* " + qty + " pcs\n\n";
+    }
+
+    message += "─────────────────────\n";
+    message += "📊 *Summary:* " + Object.keys(orderBasket).length + " unique items (" + totalQty + " total pieces).\n\n";
+    message += "📎 _Please remember to attach the downloaded PDF invoice file to this chat screen instructions before sending._";
+
+    // Copy textual receipt contents to system clipboard automatically for the client
+    navigator.clipboard.writeText(message).catch(err => {
+        console.log("Clipboard bypass fallback tracker initialized");
+    });
+
+    const encodedText = encodeURIComponent(message);
+    const whatsappUrl = "https://whatsapp.com" + WHATSAPP_PHONE_NUMBER + "&text=" + encodedText;
+    
+    // Redirect instantly to the active app room interface
+    window.open(whatsappUrl, '_blank');
+}
+
     </script>
 </body>
 </html>

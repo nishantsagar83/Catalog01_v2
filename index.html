@@ -561,25 +561,27 @@ function normalizeData(item) {
                     var finalImg = item.relativeImg ? item.relativeImg : (item.driveImg ? item.driveImg : '');
                     var currentQty = orderBasket[item.code] || 0;
 
-                    // Clean string concatenation that eliminates line-break bugs completely
-                    htmlString += '<div class="card">' +
-                        '<div class="image-container">' +
-                            '<img src="' + finalImg + '" alt="' + item.name + '" onerror="this.src=\'https://placehold.co\'">' +
-                        '</div>' +
-                        '<div class="card-content">' +
-                            '<span class="category-badge">' + (item.category || 'General') + '</span>' +
-                            '<h3 class="item-name" title="' + item.name + '">' + item.name + '</h3>' +
-                            '<div class="card-footer">' +
-                                '<span class="item-code">' + item.code + '</span>' +
-                                '<div class="qty-controls">' +
-                                    '<button class="qty-btn" onclick="updateQty(\'' + item.code + '\', -1)">-</button>' +
-                                    '<input type="number" class="qty-input" id="input-' + item.code + '" value="' + currentQty + '" min="0" onchange="handleInputChange(\'' + item.code + '\', this.value)">' +
-                                    '<button class="qty-btn" onclick="updateQty(\'' + item.code + '\', 1)">+</button>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
-                }
+
+                  // Using template literals entirely eliminates '+' and complex quote nesting
+htmlString += `
+    <div class="card">
+        <div class="image-container">
+            <img src="${finalImg}" alt="${item.name.replace(/"/g, '&quot;')}" onerror="this.src='https://placehold.co'">
+        </div>
+        <div class="card-content">
+            <span class="category-badge">${item.category || 'General'}</span>
+            <h3 class="item-name" title="${item.name.replace(/"/g, '&quot;')}">${item.name}</h3>
+            <div class="card-footer">
+                <span class="item-code">${item.code}</span>
+                <div class="qty-controls">
+                    <button class="qty-btn" onclick="updateQty('${escapeQuotes(item.code)}', -1)">-</button>
+                    <input type="number" class="qty-input" id="input-${item.code}" value="${currentQty}" min="0" onchange="handleInputChange('${escapeQuotes(item.code)}', this.value)">
+                    <button class="qty-btn" onclick="updateQty('${escapeQuotes(item.code)}', 1)">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+`;              }
             }
 
             if (matchCount === 0) {
@@ -780,6 +782,10 @@ function shareToWhatsApp() {
     }
 }
 
+     // Helper function to prevent broken inline JS strings if data contains quotes
+function escapeQuotes(str) {
+    return String(str).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+}
 
     </script>
 </body>

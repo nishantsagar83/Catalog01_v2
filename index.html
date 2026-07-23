@@ -470,11 +470,13 @@
             return '';
         }
 
-      function normalizeData(item) {
-    // 1. Secure the unique identifier identifier from the record payload
-    const itemCode = item.code || item.id || item.itemCode;
+function normalizeData(item) {
+    // 1. Secure the unique identifier from your actual JSON keys ("Item Code")
+    const itemCode = item['Item Code'] || item.code || item.id || item.itemCode;
+    const itemName = item['Item Name'] || item.name || item.title;
+
     if (!itemCode) {
-        console.warn("Skipping record: Payload entry lacks a code/id definition.", item);
+        console.warn("Skipping record: Payload entry lacks an 'Item Code' definition.", item);
         return;
     }
 
@@ -483,18 +485,18 @@
     
     // SAFETY GUARD: If the HTML card wasn't rendered into the DOM grid, bail out safely!
     if (!cardElement) {
-        console.warn(`Card with data-code="${itemCode}" does not exist in the DOM.`);
+        // Changing to console.info so it doesn't flood your console as a heavy warning
+        console.info(`Card with data-code="${itemCode}" is not hardcoded in the HTML DOM (Skipped mapping).`);
         return; 
     }
 
     // 3. Robust Null-Safe mapping engine for Title strings
-    // Searches for '.item-name', falling back to '.product-title' or an 'h3' element node
     const nameNode = cardElement.querySelector('.item-name') || 
                      cardElement.querySelector('.product-title') || 
                      cardElement.querySelector('h3');
                      
     if (nameNode) {
-        nameNode.textContent = item.name || item.title || "Unnamed Item";
+        nameNode.textContent = itemName || "Unnamed Item";
     } else {
         console.error(`Could not locate a text container class tag for item: ${itemCode}`);
     }
@@ -507,12 +509,13 @@
         codeNode.textContent = itemCode;
     }
 
-    // 5. Robust Null-Safe mapping engine for input counter tracking elements
+    // 5. Robust Null-Safe mapping engine - Fixed to reference 'orderBasket' instead of 'orderCart'
     const qtyInputNode = cardElement.querySelector('.qty-input') || 
                          cardElement.querySelector('input[type="number"]');
                          
     if (qtyInputNode) {
-        const storedQty = orderCart[itemCode] ? orderCart[itemCode].qty : (item.initialQty || 0);
+        // Changed orderCart to orderBasket to match your script's state variable name
+        const storedQty = orderBasket[itemCode] ? orderBasket[itemCode] : (item.initialQty || 0);
         qtyInputNode.value = storedQty;
     }
 }

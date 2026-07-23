@@ -483,7 +483,7 @@ function normalizeData(item) {
     }
 
     // 2. Locate the corresponding parent product layout card element in the grid
-    const cardElement = document.querySelector(`[data-code="${itemCode}"]`);
+    const cardElement = document.querySelector(`"${itemCode}"]`);
     
     // SAFETY GUARD: If the HTML card wasn't rendered into the DOM grid, bail out safely!
     if (!cardElement) {

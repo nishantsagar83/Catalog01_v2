@@ -4,7 +4,27 @@ let rawExcelData = [];
 let normalizedProducts = [];
 let orderBasket = {}; // Stores item codes and quantities
 
+let currentUser = null;
+let systemUsers = [];
 
+// Load system users on page load with fallback and debugging
+document.addEventListener("DOMContentLoaded", async function () {
+    try {
+        const response = await fetch('users.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        systemUsers = await response.json();
+        console.log("Users loaded successfully:", systemUsers);
+    } catch (err) {
+        console.warn("Could not load users.json via fetch (likely local CORS rule). Using fallback testing users.", err);
+        // Fallback testing data so login works during local development
+        systemUsers = [
+            { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" },
+            { id: "USR-102", name: "Jane Smith", role: "Manager", password: "adminpassword" }
+        ];
+    }
+});
 
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -247,31 +267,49 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 });
 
-// Authentication Handler
+// Updated Login Handler with clear validation
 function handleLogin(event) {
-    event.preventDefault();
-    
+    if (event) event.preventDefault(); // Stop page refresh
+
     const usernameInput = document.getElementById("usernameInput").value.trim();
     const passwordInput = document.getElementById("passwordInput").value;
     const loginError = document.getElementById("loginError");
 
+    console.log("Attempting login for:", usernameInput);
+    console.log("Available system users:", systemUsers);
+
+    if (systemUsers.length === 0) {
+        loginError.innerText = "User database not loaded. Please try again.";
+        loginError.style.display = "block";
+        return;
+    }
+
     const matchedUser = systemUsers.find(
-        u => u.name.toLowerCase() === usernameInput.toLowerCase() && u.password === passwordInput
+        u => u.name.toLowerCase() === usernameInput.toLowerCase() && String(u.password) === String(passwordInput)
     );
 
     if (matchedUser) {
+        console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
         document.getElementById("loginModal").style.display = "none";
         document.getElementById("loginError").style.display = "none";
         
-        // Display active logged-in user details
+        // Update Header Badge
         const userDisplay = document.getElementById("loggedInUserDisplay");
-        userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
-        document.getElementById("userInfo").style.display = "block";
+        if (userDisplay) {
+            userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
+        }
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) {
+            userInfo.style.display = "block";
+        }
     } else {
+        console.warn("Invalid credentials match failed.");
+        loginError.innerText = "Invalid User Name or Password";
         loginError.style.display = "block";
     }
 }
+
 
 // PDF Generation with User and Customer Meta
 async function generatePDF() {

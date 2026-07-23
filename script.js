@@ -4,6 +4,9 @@ let rawExcelData = [];
 let normalizedProducts = [];
 let orderBasket = {}; // Stores item codes and quantities
 
+
+
+
 document.addEventListener("DOMContentLoaded", function () {
     loadCatalogData();
 
@@ -16,6 +19,22 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchInput) {
         searchInput.addEventListener("input", renderCatalog);
     }
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    // 1. Disable Right-Click context menu on all images
+    document.addEventListener("contextmenu", function (e) {
+        if (e.target.tagName === "IMG") {
+            e.preventDefault();
+        }
+    }, false);
+
+    // 2. Disable Image Drag-and-Drop saving
+    document.addEventListener("dragstart", function (e) {
+        if (e.target.tagName === "IMG") {
+            e.preventDefault();
+        }
+    }, false);
 });
 
 async function loadCatalogData() {
@@ -222,90 +241,114 @@ async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // PDF Title Header
-    doc.setFontSize(18);
-    doc.text("PURCHASE ORDER", 14, 20);
+    // --- COMPANY BRANDING HEADER ---
+    
+    // 1. Add Logo
+    const logoImg = await loadImage('images/SMT_LOGO-1.png');
+    if (logoImg) {
+        try {
+            doc.addImage(logoImg, 'PNG', 14, 12, 22, 22); // Logo x=14, y=12, width=22, height=22
+        } catch (e) {
+            console.error("Logo failed to render:", e);
+        }
+    }
 
+    // 2. Company Name "SAMRAT"
+    doc.setFont("Colonna MT", "normal");
+    doc.setFontSize(26);
+    doc.setTextColor(10, 80, 160); // Blue color (#0A50A0)
+    doc.text("SAMRAT", 40, 22);
+
+    // 3. Subheading "Machine & Tools LLC."
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 28);
+    doc.text("Machine & Tools LLC.", 40, 28);
+
+    // 4. Header Divider Line
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.5);
+    doc.line(14, 37, 195, 37);
+
+    // --- ORDER DETAILS ---
+    
+    let yPosition = 45;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text("PURCHASE ORDER", 14, yPosition);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
 
     // Table Headers
-    let yPosition = 38;
+    yPosition += 10;
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(0);
-    doc.setFont(undefined, 'bold');
 
     doc.text("Image", 14, yPosition);
     doc.text("Item Code", 40, yPosition);
     doc.text("Item / Category", 75, yPosition);
     doc.text("Qty", 180, yPosition);
 
-    doc.setLineWidth(0.5);
     doc.line(14, yPosition + 2, 195, yPosition + 2);
 
     yPosition += 8;
 
-    const rowHeight = 20;  // Allocated height per row
-    const maxBoxSize = 14; // Max width/height for image box in mm
+    const rowHeight = 20;  
+    const maxBoxSize = 14; 
     let totalQuantity = 0;
 
     for (const item of selectedItems) {
-        // Page overflow check
         if (yPosition + rowHeight > 270) {
             doc.addPage();
             yPosition = 20;
         }
 
-        // 1. Draw Image with Aspect Ratio Maintenance
+        // Thumbnail Drawing
         const imgElement = await loadImage(item.image);
         if (imgElement && imgElement.width > 0 && imgElement.height > 0) {
             try {
                 let imgWidth = maxBoxSize;
                 let imgHeight = maxBoxSize;
 
-                // Calculate aspect ratio so image does not stretch
                 const ratio = imgElement.width / imgElement.height;
                 if (ratio > 1) {
-                    // Landscape image
                     imgHeight = maxBoxSize / ratio;
                 } else {
-                    // Portrait image
                     imgWidth = maxBoxSize * ratio;
                 }
 
-                // Center image inside the 14x14 box
                 const xOffset = 14 + (maxBoxSize - imgWidth) / 2;
                 const yOffset = yPosition + (maxBoxSize - imgHeight) / 2;
 
                 doc.addImage(imgElement, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
             } catch (e) {
-                // Ignore rendering error if image fails
+                // Handle unsupported format quietly
             }
         }
 
-        // 2. Render Text Details
+        // Item Text Rows
         const truncatedName = item.name.length > 40 ? item.name.substring(0, 37) + '...' : item.name;
 
-        // Item Code
-        doc.setFont(undefined, 'normal');
+        doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(0);
         doc.text(String(item.code), 40, yPosition + 7);
 
-        // Item Name (Top line)
-        doc.setFont(undefined, 'bold');
+        doc.setFont("helvetica", "bold");
         doc.setFontSize(9.5);
         doc.text(truncatedName, 75, yPosition + 6);
 
-        // Category (Bottom line below Item Name)
-        doc.setFont(undefined, 'normal');
+        doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
-        doc.setTextColor(110); // Gray color for category
+        doc.setTextColor(110);
         doc.text(String(item.category), 75, yPosition + 11);
 
-        // Quantity
-        doc.setFont(undefined, 'bold');
+        doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(0);
         doc.text(String(item.qty), 180, yPosition + 8);
@@ -317,10 +360,12 @@ async function generatePDF() {
     // Summary Footer
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
-    doc.setFont(undefined, 'bold');
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
-    // Save File
-    doc.save(`Order_${Date.now()}.pdf`);
+    doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
 }
+
+
+

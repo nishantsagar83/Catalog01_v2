@@ -1,15 +1,15 @@
 [
   {
     "User Id": "1",
-    "User Name": "Nimish Sagar",
+    "User Name": "Nishant",
     "Role": "Partner",
     "Password": "nimish@smt"
   },
- {
+  {
     "User Id": "2",
-    "User Name": "Kamalakar Kudu",
-    "Role": "Warehouse",
-    "Password": "kamalakar@smt"
+    "User Name": "Nimish",
+    "Role": "Partner",
+    "Password": "nimish@smt"
   },
   {
     "User Id": "3",
@@ -40,5 +40,11 @@
     "User Name": "Tushar",
     "Role": "Admin",
     "Password": "tushar@smt"
+  },  
+  {
+    "User Id": "2",
+    "User Name": "Kamalakar Kudu",
+    "Role": "Warehouse",
+    "Password": "kamalakar@smt"
   }
 ]

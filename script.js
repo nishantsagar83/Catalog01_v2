@@ -233,13 +233,60 @@ function clearBasket() {
     updateOrderBar();
 }
 
-async function generatePDF() {
-    const basketKeys = Object.keys(orderBasket);
 
+let currentUser = null;
+let systemUsers = [];
+
+// Load system users on page initialization
+document.addEventListener("DOMContentLoaded", async function () {
+    try {
+        const response = await fetch('users.json');
+        systemUsers = await response.json();
+    } catch (err) {
+        console.error("Failed to load users.json:", err);
+    }
+});
+
+// Authentication Handler
+function handleLogin(event) {
+    event.preventDefault();
+    
+    const usernameInput = document.getElementById("usernameInput").value.trim();
+    const passwordInput = document.getElementById("passwordInput").value;
+    const loginError = document.getElementById("loginError");
+
+    const matchedUser = systemUsers.find(
+        u => u.name.toLowerCase() === usernameInput.toLowerCase() && u.password === passwordInput
+    );
+
+    if (matchedUser) {
+        currentUser = matchedUser;
+        document.getElementById("loginModal").style.display = "none";
+        document.getElementById("loginError").style.display = "none";
+        
+        // Display active logged-in user details
+        const userDisplay = document.getElementById("loggedInUserDisplay");
+        userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
+        document.getElementById("userInfo").style.display = "block";
+    } else {
+        loginError.style.display = "block";
+    }
+}
+
+// PDF Generation with User and Customer Meta
+async function generatePDF() {
+    if (!currentUser) {
+        alert("Please log in before generating an order.");
+        return;
+    }
+
+    const basketKeys = Object.keys(orderBasket);
     if (basketKeys.length === 0) {
         alert("Your order is empty. Please select quantity for at least one item.");
         return;
     }
+
+    const customerName = document.getElementById("customerNameInput").value.trim() || "N/A";
 
     const selectedItems = basketKeys.map(code => {
         const product = normalizedProducts.find(p => p.code === code) || {};
@@ -255,46 +302,34 @@ async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // --- COMPANY BRANDING & CONTACT HEADER ---
-    
-    // 1. Logo
+    // 1. BRANDING HEADER
     const logoImg = await loadImage('images/SMT_LOGO-1.png');
     if (logoImg) {
-        try {
-            doc.addImage(logoImg, 'PNG', 14, 10, 22.5, 18.8);
-        } catch (e) {
-            console.error("Logo failed to render:", e);
-        }
+        try { doc.addImage(logoImg, 'PNG', 14, 10, 22, 22); } catch (e) {}
     }
 
-    // 2. Company Name & Subheading (Left Side)
     doc.setFont("Colonna MT", "normal");
-    doc.setFontSize(18);
-    doc.setTextColor(10, 80, 160); // Blue (#0A50A0)
+    doc.setFontSize(24);
+    doc.setTextColor(10, 80, 160);
     doc.text("SAMRAT", 40, 18);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(9.5);
     doc.setTextColor(80);
     doc.text("Machine & Tools LLC.", 40, 24);
 
-    // 3. Contact Info (Right Side Aligned)
-    doc.setFont("helvetica", "normal");
+    const rightX = 195;
     doc.setFontSize(8.5);
     doc.setTextColor(100);
+    doc.text("Phone: +1 234 567 8900", rightX, 15, { align: "right" });
+    doc.text("Email: info@samrattools.com", rightX, 20, { align: "right" });
+    doc.text("Address: 123 Industrial Area, City", rightX, 25, { align: "right" });
 
-    const rightX = 195;
-    doc.text("Phone: +971-54-2243526/27", rightX, 15, { align: "right" });
-    doc.text("Email: dxb@samratco.com", rightX, 20, { align: "right" });
-    doc.text("Address: Shop No. 7 & 8, Building No. 2, Gold Souk, Al Ras, Deira, Dubai - UAE", rightX, 25, { align: "right" });
-
-    // 4. Header Divider Line
     doc.setDrawColor(200);
     doc.setLineWidth(0.5);
     doc.line(14, 33, 195, 33);
 
-    // --- ORDER DETAILS ---
-    
+    // 2. ORDER & USER METADATA SECTION
     let yPosition = 42;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -303,8 +338,13 @@ async function generatePDF() {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, yPosition);
+    doc.setTextColor(80);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, rightX, yPosition, { align: "right" });
+
+    yPosition += 6;
+    doc.setFontSize(9);
+    doc.text(`Customer Name: ${customerName}`, 14, yPosition);
+    doc.text(`Sales Representative: ${currentUser.name} (ID: ${currentUser.id})`, rightX, yPosition, { align: "right" });
 
     // Table Headers
     yPosition += 10;
@@ -331,7 +371,6 @@ async function generatePDF() {
             yPosition = 20;
         }
 
-        // Thumbnail Drawing
         const imgElement = await loadImage(item.image);
         if (imgElement && imgElement.width > 0 && imgElement.height > 0) {
             try {
@@ -349,12 +388,9 @@ async function generatePDF() {
                 const yOffset = yPosition + (maxBoxSize - imgHeight) / 2;
 
                 doc.addImage(imgElement, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
-            } catch (e) {
-                // Ignore unsupported formats quietly
-            }
+            } catch (e) {}
         }
 
-        // Item Details
         const truncatedName = item.name.length > 40 ? item.name.substring(0, 37) + '...' : item.name;
 
         doc.setFont("helvetica", "normal");
@@ -389,14 +425,9 @@ async function generatePDF() {
 
     doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
 
-    // ... preceding generatePDF logic ...
-
-    // Save File
-    doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
-
-    // Auto-clear basket and reset UI after successful download
+    // Reset customer field and clear order basket
+    document.getElementById("customerNameInput").value = "";
     clearBasket();
 }
-
 
 

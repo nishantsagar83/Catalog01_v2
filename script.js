@@ -239,21 +239,24 @@ function handleLogin(event) {
     const loginError = document.getElementById("loginError");
 
     console.log("Attempting login with:", { usernameInput, passwordInput });
-    console.log("Current systemUsers array:", systemUsers);
 
-    // Guard against empty users array
     if (!systemUsers || systemUsers.length === 0) {
-        console.warn("systemUsers array is empty. Injecting temporary fallback user.");
-        systemUsers = [
-            { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" }
-        ];
+        console.warn("systemUsers is empty!");
+        return false;
     }
 
-    // Flexible search matching variations in property names (name/username) and data types
+    // Comprehensive finder that searches all probable JSON property names
     const matchedUser = systemUsers.find(u => {
-        const dbName = String(u.name || u.username || u.User || "").trim().toLowerCase();
-        const dbPass = String(u.password || u.Pass || "").trim();
-        
+        // Find property name regardless of casing/keys (e.g. name, username, user, id, User Name)
+        const dbName = String(
+            u.name || u.username || u.User || u['User Name'] || u.id || u.UserId || ""
+        ).trim().toLowerCase();
+
+        // Find password property regardless of key (e.g. password, pass, Pass, Pin)
+        const dbPass = String(
+            u.password || u.pass || u.Pass || u.pin || u.Pin || ""
+        ).trim();
+
         return dbName === usernameInput.toLowerCase() && dbPass === passwordInput;
     });
 
@@ -261,21 +264,22 @@ function handleLogin(event) {
         console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
 
-        // Hide Modal
         const modal = document.getElementById("loginModal");
         if (modal) modal.style.display = "none";
 
-        // Update Header User Display
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) {
-            userDisplay.innerText = `${currentUser.name || currentUser.username} (${currentUser.id})`;
+            userDisplay.innerText = `${currentUser.name || currentUser.username || currentUser.id} (${currentUser.id || 'User'})`;
         }
 
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
     } else {
-        console.warn("Authentication failed. Inputs do not match systemUsers data.");
+        console.error("--- LOGIN FAILED ---");
+        console.log("Input attempted:", { usernameInput, passwordInput });
+        console.log("Actual objects in users.json:", JSON.parse(JSON.stringify(systemUsers)));
+        
         if (loginError) {
             loginError.innerText = "Invalid Username or Password";
             loginError.style.display = "block";
@@ -284,7 +288,6 @@ function handleLogin(event) {
 
     return false;
 }
-
 // --- PDF GENERATION ---
 function loadImage(url) {
     return new Promise((resolve) => {

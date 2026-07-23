@@ -340,21 +340,77 @@
                 flex-grow: 1;
             }
         }
+
+      /* Brand layout formatting */
+.brand-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* New Prompt Element State Controller */
+#top-action-prompt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #fff7ed;
+    border: 1px solid #ffedd5;
+    padding: 6px 12px;
+    border-radius: 8px;
+    opacity: 0;
+    transform: translateY(-5px);
+    pointer-events: none;
+    transition: var(--transition-smooth);
+}
+
+#top-action-prompt.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.prompt-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #c2410c;
+}
+
+/* Small Utility Button Variant */
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
     </style>
 </head>
 <body>
 
     <header>
-        <div class="header-container">
-            <h1>SMT Catalog (<span id="itemCount">0</span>)</h1>
-            <div class="controls-wrapper">
-                <select id="categoryFilter">
-                    <option value="all">All Categories</option>
-                </select>
-                <input type="text" id="searchInput" placeholder="Search name or code...">
+    <div class="header-container">
+        <div class="brand-group">
+            <h1>SMT Catalog</h1>
+            <!-- New Top Prompt Status Block -->
+            <div id="top-action-prompt" class="top-prompt-hidden">
+                <span class="prompt-text">Items Selected!</span>
+                <button class="btn btn-pdf btn-sm" onclick="generatePDF()">
+                    <i class="fa-solid fa-file-pdf"></i> Export Order PDF
+                </button>
             </div>
         </div>
-    </header>
+        <div class="controls-wrapper">
+            <input type="text" id="search-bar" placeholder="Search item or code..." oninput="filterCatalog()">
+            <select id="category-filter" onchange="filterCatalog()">
+                <option value="all">All Categories</option>
+                <option value="ic">ICs & Chips</option>
+                <option value="passives">Passives</option>
+                <option value="connectors">Connectors</option>
+            </select>
+        </div>
+    </div>
+</header>
+
 
 <main class="catalog-container">
         <div class="grid" id="productGrid"></div>
@@ -654,6 +710,28 @@ function shareToWhatsApp() {
     // Redirect instantly to the active app room interface
     window.open(whatsappUrl, '_blank');
 }
+
+     function renderFloatingBar() {
+    const orderBar = document.getElementById('order-bar');
+    const topPrompt = document.getElementById('top-action-prompt');
+    let totalItems = 0;
+    
+    for (const code in orderCart) {
+        totalItems += orderCart[code].qty;
+    }
+    
+    document.getElementById('total-items-count').innerText = totalItems;
+    
+    // Toggle both UI elements dynamically when quantities change
+    if (totalItems > 0) {
+        orderBar.classList.add('active');
+        topPrompt.classList.add('visible');
+    } else {
+        orderBar.classList.remove('active');
+        topPrompt.classList.remove('visible');
+    }
+}
+
 
     </script>
 </body>

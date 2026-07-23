@@ -51,7 +51,7 @@ function buildNormalizedArray(data) {
             name: item['Item Name'] || item.name || item.title || 'Unnamed Item',
             category: item['Category'] || item.category || 'Uncategorized',
             // Ignores Drive URLs and constructs local path based on Item Code
-            image: `images/${code}.jpg`, 
+            image: `images/${code}.png`, 
             initialQty: item.initialQty || 0
         };
     }).filter(item => item.code !== ''); // Keep valid items only

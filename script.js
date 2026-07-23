@@ -187,3 +187,21 @@ function syncQuantities() {
         }
     }
 }
+
+// Function called by your HTML button's onclick="generatePDF()"
+function generatePDF() {
+    // Access jsPDF from the CDN bundle loaded in your <head>
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Add content to the PDF
+    doc.setFontSize(16);
+    doc.text("Product Catalog", 10, 10);
+    
+    // Example: Loop through or add items/details here
+    doc.setFontSize(12);
+    doc.text("Generated successfully!", 10, 20);
+
+    // Save and download the PDF
+    doc.save("catalog.pdf");
+}

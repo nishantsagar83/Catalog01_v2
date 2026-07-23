@@ -397,6 +397,6 @@ async function generatePDF() {
     // Auto-clear basket and reset UI after successful download
     clearBasket();
 }
-}
+
 
 

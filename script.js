@@ -238,24 +238,15 @@ function handleLogin(event) {
     const passwordInput = document.getElementById("passwordInput").value.trim();
     const loginError = document.getElementById("loginError");
 
-    console.log("Attempting login with:", { usernameInput, passwordInput });
-
     if (!systemUsers || systemUsers.length === 0) {
         console.warn("systemUsers is empty!");
         return false;
     }
 
-    // Comprehensive finder that searches all probable JSON property names
+    // Match against your actual JSON keys: "User Name" and "Password"
     const matchedUser = systemUsers.find(u => {
-        // Find property name regardless of casing/keys (e.g. name, username, user, id, User Name)
-        const dbName = String(
-            u.name || u.username || u.User || u['User Name'] || u.id || u.UserId || ""
-        ).trim().toLowerCase();
-
-        // Find password property regardless of key (e.g. password, pass, Pass, Pin)
-        const dbPass = String(
-            u.password || u.pass || u.Pass || u.pin || u.Pin || ""
-        ).trim();
+        const dbName = String(u["User Name"] || u.name || u.username || "").trim().toLowerCase();
+        const dbPass = String(u["Password"] || u.password || "").trim();
 
         return dbName === usernameInput.toLowerCase() && dbPass === passwordInput;
     });
@@ -264,22 +255,23 @@ function handleLogin(event) {
         console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
 
+        // 1. Hide the login modal
         const modal = document.getElementById("loginModal");
         if (modal) modal.style.display = "none";
 
+        // 2. Update header display (using "User Name" and "User Id")
+        const userName = matchedUser["User Name"] || matchedUser.name;
+        const userId = matchedUser["User Id"] || matchedUser.id || 'User';
+
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) {
-            userDisplay.innerText = `${currentUser.name || currentUser.username || currentUser.id} (${currentUser.id || 'User'})`;
+            userDisplay.innerText = `${userName} (${userId})`;
         }
 
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
     } else {
-        console.error("--- LOGIN FAILED ---");
-        console.log("Input attempted:", { usernameInput, passwordInput });
-        console.log("Actual objects in users.json:", JSON.parse(JSON.stringify(systemUsers)));
-        
         if (loginError) {
             loginError.innerText = "Invalid Username or Password";
             loginError.style.display = "block";
@@ -288,6 +280,7 @@ function handleLogin(event) {
 
     return false;
 }
+
 // --- PDF GENERATION ---
 function loadImage(url) {
     return new Promise((resolve) => {

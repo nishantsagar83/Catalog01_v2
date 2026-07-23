@@ -29,6 +29,7 @@
                         <i class="fa-solid fa-file-pdf"></i> Export Order PDF
                     </button>
                 </div>
+                
             </div>
 
             <div class="controls-wrapper">
@@ -55,9 +56,29 @@
             <button class="submit-order-btn" onclick="generatePDF()">
                 <i class="fa-solid fa-file-pdf"></i> Generate Order PDF
             </button>
+            <!-- Example placement inside your orderBar container -->
+            <div id="orderBar" class="order-bar">
+                <span class="order-count">Selected Items: <strong id="totalSelectedCount">0</strong></span>
+                
+                <div class="order-actions">
+                    <!-- Clear Basket Icon Button -->
+                    <button type="button" class="btn-clear" onclick="clearBasket()" title="Clear Basket">
+                        🗑️ Clear
+                    </button>
+            
+                    <!-- Generate PDF Button -->
+                    <button type="button" class="btn-pdf" onclick="generatePDF()">
+                        Generate PDF
+                    </button>
+                </div>
+</div>
         </div>
     </div>
 
+    
+
+
+    
     <!-- External JS (defer ensures DOM parsing complete before script runs) -->
     <script src="script.js" defer></script>
 </body>

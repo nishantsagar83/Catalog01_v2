@@ -433,9 +433,8 @@
         }
 
                
-        function renderCatalog() {
+                function renderCatalog() {
             var grid = document.getElementById('productGrid');
-            var countSpan = document.getElementById('itemCount');
             var selectedCategory = document.getElementById('categoryFilter').value;
             var searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
 
@@ -445,7 +444,6 @@
             for (var i = 0; i < normalizedProducts.length; i++) {
                 var item = normalizedProducts[i];
                 
-                // Filtering checks
                 var matchesCategory = (selectedCategory === 'all' || item.category === selectedCategory);
                 var matchesSearch = (item.name.toLowerCase().indexOf(searchTerm) !== -1 || 
                                      item.code.toLowerCase().indexOf(searchTerm) !== -1);
@@ -453,21 +451,36 @@
                 if (matchesCategory && matchesSearch) {
                     matchCount++;
                     
-                    // Direct waterfall path selection for images
                     var finalImg = item.relativeImg ? item.relativeImg : (item.driveImg ? item.driveImg : '');
+                    var currentQty = orderBasket[item.code] || 0;
 
+                    // Clean string concatenation that eliminates line-break bugs completely
                     htmlString += '<div class="card">' +
                         '<div class="image-container">' +
-                            '<img src="' + finalImg + '" alt="" onerror="this.src=\'https://placehold.co\'">' +
+                            '<img src="' + finalImg + '" alt="' + item.name + '" onerror="this.src=\'https://placehold.co\'">' +
                         '</div>' +
                         '<div class="card-content">' +
-                            '<span class="category-badge">' + (item.category ? item.category : 'Uncategorized') + '</span>' +
-                            '<h2 class="item-name">' + (item.name ? item.name : 'No Name Available') + '</h2>' +
-                            '<span class="item-code">Code: ' + (item.code ? item.code : 'N/A') + '</span>' +
+                            '<span class="category-badge">' + (item.category || 'General') + '</span>' +
+                            '<h3 class="item-name" title="' + item.name + '">' + item.name + '</h3>' +
+                            '<div class="card-footer">' +
+                                '<span class="item-code">' + item.code + '</span>' +
+                                '<div class="qty-controls">' +
+                                    '<button class="qty-btn" onclick="updateQty(\'' + item.code + '\', -1)">-</button>' +
+                                    '<input type="number" class="qty-input" id="input-' + item.code + '" value="' + currentQty + '" min="0" onchange="handleInputChange(\'' + item.code + '\', this.value)">' +
+                                    '<button class="qty-btn" onclick="updateQty(\'' + item.code + '\', 1)">+</button>' +
+                                '</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>';
                 }
             }
+
+            if (matchCount === 0) {
+                grid.innerHTML = '<div class="no-results">No items found matching your criteria.</div>';
+            } else {
+                grid.innerHTML = htmlString;
+            }
+        }
 
             // Update item count badge
             countSpan.innerText = matchCount;

@@ -213,7 +213,7 @@ async function generatePDF() {
         return {
             code: code,
             name: product.name || 'Unknown Item',
-            category: product.category || 'N/A',
+            category: product.category || 'Uncategorized',
             image: product.image || `images/${code}.png`,
             qty: orderBasket[code]
         };
@@ -238,46 +238,77 @@ async function generatePDF() {
 
     doc.text("Image", 14, yPosition);
     doc.text("Item Code", 40, yPosition);
-    doc.text("Item Name", 75, yPosition);
-    doc.text("Category", 145, yPosition);
-    doc.text("Qty", 185, yPosition);
+    doc.text("Item / Category", 75, yPosition);
+    doc.text("Qty", 180, yPosition);
 
     doc.setLineWidth(0.5);
     doc.line(14, yPosition + 2, 195, yPosition + 2);
 
     yPosition += 8;
-    doc.setFont(undefined, 'normal');
 
-    const rowHeight = 18; // Height allocated per row to accommodate thumbnails
-    const imgSize = 14;   // Size of thumbnail square (14mm x 14mm)
+    const rowHeight = 20;  // Allocated height per row
+    const maxBoxSize = 14; // Max width/height for image box in mm
     let totalQuantity = 0;
 
-    // Process items sequentially to ensure images load properly
     for (const item of selectedItems) {
-        // Page overflow check (leaves room for header/footer)
+        // Page overflow check
         if (yPosition + rowHeight > 270) {
             doc.addPage();
             yPosition = 20;
         }
 
-        // 1. Try loading item thumbnail
+        // 1. Draw Image with Aspect Ratio Maintenance
         const imgElement = await loadImage(item.image);
-        if (imgElement) {
+        if (imgElement && imgElement.width > 0 && imgElement.height > 0) {
             try {
-                doc.addImage(imgElement, 'PNG', 14, yPosition, imgSize, imgSize);
+                let imgWidth = maxBoxSize;
+                let imgHeight = maxBoxSize;
+
+                // Calculate aspect ratio so image does not stretch
+                const ratio = imgElement.width / imgElement.height;
+                if (ratio > 1) {
+                    // Landscape image
+                    imgHeight = maxBoxSize / ratio;
+                } else {
+                    // Portrait image
+                    imgWidth = maxBoxSize * ratio;
+                }
+
+                // Center image inside the 14x14 box
+                const xOffset = 14 + (maxBoxSize - imgWidth) / 2;
+                const yOffset = yPosition + (maxBoxSize - imgHeight) / 2;
+
+                doc.addImage(imgElement, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
             } catch (e) {
-                // Ignore rendering error if image format is unsupported
+                // Ignore rendering error if image fails
             }
         }
 
-        // 2. Render Text Details (Vertically centered relative to image)
-        const textY = yPosition + (imgSize / 2) + 1;
-        const truncatedName = item.name.length > 30 ? item.name.substring(0, 27) + '...' : item.name;
+        // 2. Render Text Details
+        const truncatedName = item.name.length > 40 ? item.name.substring(0, 37) + '...' : item.name;
 
-        doc.text(String(item.code), 40, textY);
-        doc.text(truncatedName, 75, textY);
-        doc.text(String(item.category), 145, textY);
-        doc.text(String(item.qty), 185, textY);
+        // Item Code
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(0);
+        doc.text(String(item.code), 40, yPosition + 7);
+
+        // Item Name (Top line)
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(9.5);
+        doc.text(truncatedName, 75, yPosition + 6);
+
+        // Category (Bottom line below Item Name)
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(110); // Gray color for category
+        doc.text(String(item.category), 75, yPosition + 11);
+
+        // Quantity
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(0);
+        doc.text(String(item.qty), 180, yPosition + 8);
 
         totalQuantity += item.qty;
         yPosition += rowHeight;
@@ -287,6 +318,7 @@ async function generatePDF() {
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
     doc.setFont(undefined, 'bold');
+    doc.setFontSize(10);
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
     // Save File

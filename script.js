@@ -227,6 +227,31 @@ function clearBasket() {
     updateOrderBar();
 }
 
+function handleLogout() {
+    // 1. Clear current user reference
+    currentUser = null;
+
+    // 2. Clear any stored session data if you are using localStorage/sessionStorage
+    localStorage.removeItem("loggedInUser");
+
+    // 3. Hide user info in header
+    const userInfo = document.getElementById("userInfo");
+    if (userInfo) userInfo.style.display = "none";
+
+    // 4. Reset form fields and error messages
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) loginForm.reset();
+
+    const loginError = document.getElementById("loginError");
+    if (loginError) loginError.style.display = "none";
+
+    // 5. Show login modal again
+    const modal = document.getElementById("loginModal");
+    if (modal) modal.style.display = "block";
+
+    console.log("User logged out successfully.");
+}
+
 // --- LOGIN AUTHENTICATION ---
 function handleLogin(event) {
     if (event) {

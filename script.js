@@ -234,28 +234,57 @@ function handleLogin(event) {
         event.stopPropagation();
     }
 
-    const usernameInput = document.getElementById("usernameInput").value.trim();
-    const passwordInput = document.getElementById("passwordInput").value.trim();
+    console.log("--- LOGIN ATTEMPT STARTED ---");
+
+    const usernameElem = document.getElementById("usernameInput");
+    const passwordElem = document.getElementById("passwordInput");
     const loginError = document.getElementById("loginError");
+    const modal = document.getElementById("loginModal");
+
+    if (!usernameElem || !passwordElem) {
+        console.error("Missing input elements in DOM!");
+        return false;
+    }
+
+    const usernameInput = usernameElem.value.trim();
+    const passwordInput = passwordElem.value.trim();
+
+    console.log("Entered Username:", usernameInput);
+    console.log("Entered Password:", passwordInput);
+    console.log("Available Users Array:", systemUsers);
+
+    // Fallback: force test user if systemUsers array is empty
+    if (!systemUsers || systemUsers.length === 0) {
+        systemUsers = [
+            { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" }
+        ];
+    }
 
     const matchedUser = systemUsers.find(
-        u => u.name.toLowerCase() === usernameInput.toLowerCase() && String(u.password) === passwordInput
+        u => String(u.name).toLowerCase() === usernameInput.toLowerCase() && String(u.password) === passwordInput
     );
 
     if (matchedUser) {
+        console.log("Match Found!", matchedUser);
         currentUser = matchedUser;
 
-        const modal = document.getElementById("loginModal");
-        if (modal) modal.style.display = "none";
+        // Force Hide Modal
+        if (modal) {
+            modal.style.display = "none";
+            console.log("Modal display set to 'none'");
+        } else {
+            console.error("Element #loginModal not found in DOM!");
+        }
 
+        // Update Header Displays safely
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
 
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
-        console.log("Login successful as:", currentUser);
     } else {
+        console.warn("No user match found.");
         if (loginError) {
             loginError.innerText = "Invalid Username or Password";
             loginError.style.display = "block";

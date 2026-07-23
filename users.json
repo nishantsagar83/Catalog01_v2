@@ -1,0 +1,44 @@
+[
+  {
+    "User Id": "1",
+    "User Name": "Nimish Sagar",
+    "Role": "Partner",
+    "Password": "nimish@smt"
+  },
+ {
+    "User Id": "2",
+    "User Name": "Kamalakar Kudu",
+    "Role": "Warehouse",
+    "Password": "kamalakar@smt"
+  },
+  {
+    "User Id": "3",
+    "User Name": "Ankur",
+    "Role": "Service",
+    "Password": "ankur@smt"
+  },
+  {
+    "User Id": "4",
+    "User Name": "Vishal",
+    "Role": "Sales",
+    "Password": "vishal@smt"
+  },
+  {
+    "User Id": "5",
+    "User Name": "Krishna",
+    "Role": "Sales",
+    "Password": "krishna@smt"
+  },
+  {
+    "User Id": "6",
+    "User Name": "Kamlesh",
+    "Role": "Sales",
+    "Password": "kamlesh@smt"
+  },
+  {
+    "User Id": "7",
+    "User Name": "Tushar",
+    "Role": "Admin",
+    "Password": "tushar@smt"
+  }
+]

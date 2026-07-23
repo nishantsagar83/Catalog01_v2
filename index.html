@@ -447,7 +447,7 @@
         // Ensure script executes ONLY after all HTML layout nodes are parsed safely
     document.addEventListener("DOMContentLoaded", function loadCatalogData() {
     // 1. Fetch data safely
-    fetch('YOUR_DATA_SOURCE.json') // or your local inventory data array
+    fetch('products.json') // or your local inventory data array
         .then(response => {
             if (!response.ok) throw new Error("Network response error");
             return response.json();
@@ -651,7 +651,7 @@
 
        // --- CONFIGURATION ---
 // Replace this with your company's mobile number (Country code + phone number, no '+' or spaces)
-const WHATSAPP_PHONE_NUMBER = "201000000000"; 
+const WHATSAPP_PHONE_NUMBER = "201090557722"; 
 
 // --- GENERATE PDF NATIVELY USING JSPDF ---
 function generatePDF() {

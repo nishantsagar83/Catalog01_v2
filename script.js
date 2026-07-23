@@ -277,6 +277,8 @@ function handleLogin(event) {
     });
 
     if (matchedUser) {
+        // Add inside handleLogin right after matching:
+        sessionStorage.setItem("loggedInUser", JSON.stringify(matchedUser));
         console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
 
@@ -449,3 +451,21 @@ function generatePDF() {
     if (customerInput) customerInput.value = "";
     clearBasket();
 }
+
+window.addEventListener("DOMContentLoaded", () => {
+    const savedUser = sessionStorage.getItem("loggedInUser");
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        
+        const modal = document.getElementById("loginModal");
+        if (modal) modal.style.display = "none";
+
+        const userName = currentUser["User Name"] || currentUser.name;
+        const userId = currentUser["User Id"] || currentUser.id;
+
+        const userDisplay = document.getElementById("loggedInUserDisplay");
+        if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
+
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) userInfo.style.display = "inline-flex";
+    }

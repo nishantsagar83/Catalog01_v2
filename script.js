@@ -324,7 +324,7 @@ async function generatePDF() {
     // 1. BRANDING HEADER
     const logoImg = await loadImage('images/SMT_LOGO-1.png');
     if (logoImg) {
-        try { doc.addImage(logoImg, 'PNG', 14, 10, 22, 22); } catch (e) {}
+        try { doc.addImage(logoImg, 'PNG', 14, 10, 22, 18.4); } catch (e) {}
     }
 
     doc.setFont("Colonna MT", "normal");

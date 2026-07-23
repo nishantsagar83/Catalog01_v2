@@ -189,8 +189,18 @@ function syncQuantities() {
 }
 
 // Function called by your HTML button's onclick="generatePDF()"
-function generatePDF() {
-    // 1. Get selected item codes from orderBasket
+// Helper function to load an image URL into a Base64 string/HTMLImageElement
+function loadImage(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null); // Fallback if image fails to load
+        img.src = url;
+    });
+}
+
+async function generatePDF() {
     const basketKeys = Object.keys(orderBasket);
 
     if (basketKeys.length === 0) {
@@ -198,22 +208,21 @@ function generatePDF() {
         return;
     }
 
-    // 2. Map basket keys to full product details + selected quantity
     const selectedItems = basketKeys.map(code => {
         const product = normalizedProducts.find(p => p.code === code) || {};
         return {
             code: code,
             name: product.name || 'Unknown Item',
             category: product.category || 'N/A',
+            image: product.image || `images/${code}.png`,
             qty: orderBasket[code]
         };
     });
 
-    // 3. Initialize jsPDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // 4. PDF Header
+    // PDF Title Header
     doc.setFontSize(18);
     doc.text("PURCHASE ORDER", 14, 20);
 
@@ -221,52 +230,65 @@ function generatePDF() {
     doc.setTextColor(100);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 28);
 
-    // 5. Build PDF Table or List
-    let yPosition = 40;
-    
     // Table Headers
+    let yPosition = 38;
     doc.setFontSize(10);
     doc.setTextColor(0);
     doc.setFont(undefined, 'bold');
-    doc.text("Item Code", 14, yPosition);
-    doc.text("Item Name", 50, yPosition);
-    doc.text("Category", 130, yPosition);
-    doc.text("Qty", 180, yPosition);
+
+    doc.text("Image", 14, yPosition);
+    doc.text("Item Code", 40, yPosition);
+    doc.text("Item Name", 75, yPosition);
+    doc.text("Category", 145, yPosition);
+    doc.text("Qty", 185, yPosition);
 
     doc.setLineWidth(0.5);
     doc.line(14, yPosition + 2, 195, yPosition + 2);
 
-    yPosition += 10;
+    yPosition += 8;
     doc.setFont(undefined, 'normal');
 
+    const rowHeight = 18; // Height allocated per row to accommodate thumbnails
+    const imgSize = 14;   // Size of thumbnail square (14mm x 14mm)
     let totalQuantity = 0;
 
-    // 6. Loop through items and add rows
-    selectedItems.forEach(item => {
-        // Page overflow check
-        if (yPosition > 270) {
+    // Process items sequentially to ensure images load properly
+    for (const item of selectedItems) {
+        // Page overflow check (leaves room for header/footer)
+        if (yPosition + rowHeight > 270) {
             doc.addPage();
             yPosition = 20;
         }
 
-        // Truncate long names to prevent overflow
-        const truncatedName = item.name.length > 35 ? item.name.substring(0, 32) + '...' : item.name;
+        // 1. Try loading item thumbnail
+        const imgElement = await loadImage(item.image);
+        if (imgElement) {
+            try {
+                doc.addImage(imgElement, 'PNG', 14, yPosition, imgSize, imgSize);
+            } catch (e) {
+                // Ignore rendering error if image format is unsupported
+            }
+        }
 
-        doc.text(String(item.code), 14, yPosition);
-        doc.text(truncatedName, 50, yPosition);
-        doc.text(String(item.category), 130, yPosition);
-        doc.text(String(item.qty), 180, yPosition);
+        // 2. Render Text Details (Vertically centered relative to image)
+        const textY = yPosition + (imgSize / 2) + 1;
+        const truncatedName = item.name.length > 30 ? item.name.substring(0, 27) + '...' : item.name;
+
+        doc.text(String(item.code), 40, textY);
+        doc.text(truncatedName, 75, textY);
+        doc.text(String(item.category), 145, textY);
+        doc.text(String(item.qty), 185, textY);
 
         totalQuantity += item.qty;
-        yPosition += 8;
-    });
+        yPosition += rowHeight;
+    }
 
-    // 7. Summary Footer
+    // Summary Footer
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
     doc.setFont(undefined, 'bold');
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
-    // 8. Download File
+    // Save File
     doc.save(`Order_${Date.now()}.pdf`);
 }

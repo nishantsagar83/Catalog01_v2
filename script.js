@@ -2,12 +2,11 @@ console.log("JavaScript is successfully linked!");
 
 let rawExcelData = [];
 let normalizedProducts = [];
-let orderBasket = {}; // Maps item codes to quantities
+let orderBasket = {}; // Stores item codes and quantities
 
 document.addEventListener("DOMContentLoaded", function () {
     loadCatalogData();
 
-    // Attach filter & search listeners if elements exist
     const categoryFilter = document.getElementById("categoryFilter");
     const searchInput = document.getElementById("searchInput");
 
@@ -26,16 +25,15 @@ async function loadCatalogData() {
 
         rawExcelData = await response.json();
 
-        // 1. Normalize data and populate internal array
+        // Build clean internal product data array
         buildNormalizedArray(rawExcelData);
 
-        // 2. Populate the filter dropdown based on available categories
+        // Dynamic category setup
         populateCategories();
 
-        // 3. Render cards into the DOM
+        // Render catalog DOM cards
         renderCatalog();
 
-        // 4. Sync quantities into rendered elements
         syncQuantities();
     } catch (error) {
         console.error('Failed to load JSON data:', error);
@@ -46,14 +44,17 @@ function buildNormalizedArray(data) {
     if (!Array.isArray(data)) return;
 
     normalizedProducts = data.map(item => {
+        const code = item['Item Code'] || item.code || item.id || '';
+        
         return {
-            code: item['Item Code'] || item.code || item.id || '',
+            code: code,
             name: item['Item Name'] || item.name || item.title || 'Unnamed Item',
             category: item['Category'] || item.category || 'Uncategorized',
-            image: item['Product Image'] || item.productImage || item.image || '',
+            // Ignores Drive URLs and constructs local path based on Item Code
+            image: `images/${code}.jpg`, 
             initialQty: item.initialQty || 0
         };
-    }).filter(item => item.code !== ''); // Keep items with a valid code
+    }).filter(item => item.code !== ''); // Keep valid items only
 }
 
 function populateCategories() {
@@ -107,13 +108,20 @@ function renderCatalog() {
 
             htmlString += `
                 <div class="product-card" data-code="${item.code}">
-                    <img src="${item.image}" alt="${item.name}" class="product-image" onerror="this.src='placeholder.png';" />
-                    <h3 class="item-name">${item.name}</h3>
-                    <p class="item-code">Code: ${item.code}</p>
-                    <p class="item-category">${item.category}</p>
-                    <div class="quantity-controls">
-                        <label>Qty:</label>
-                        <input type="number" class="qty-input" min="0" value="${qty}" onchange="updateQuantity('${item.code}', this.value)" />
+                    <div class="image-container">
+                        <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null; this.src='images/placeholder.png';" />
+                    </div>
+                    <div class="card-content">
+                        <span class="category-badge">${item.category}</span>
+                        <h3 class="item-name">${item.name}</h3>
+                        <div class="card-footer">
+                            <span class="item-code">${item.code}</span>
+                            <div class="qty-controls">
+                                <button type="button" class="qty-btn" onclick="adjustQty('${item.code}', -1)">-</button>
+                                <input type="number" class="qty-input" min="0" value="${qty}" onchange="updateQuantity('${item.code}', this.value)" />
+                                <button type="button" class="qty-btn" onclick="adjustQty('${item.code}', 1)">+</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -121,11 +129,51 @@ function renderCatalog() {
     });
 
     grid.innerHTML = htmlString || '<p class="no-results">No products found.</p>';
+    updateOrderBar();
+}
+
+function adjustQty(itemCode, delta) {
+    const currentQty = orderBasket[itemCode] || 0;
+    const newQty = Math.max(0, currentQty + delta);
+    updateQuantity(itemCode, newQty);
+    
+    // Update card input UI directly
+    const card = document.querySelector(`[data-code="${itemCode}"]`);
+    if (card) {
+        const input = card.querySelector('.qty-input');
+        if (input) input.value = newQty;
+    }
 }
 
 function updateQuantity(itemCode, qty) {
     const numericQty = parseInt(qty, 10) || 0;
-    orderBasket[itemCode] = numericQty;
+    if (numericQty > 0) {
+        orderBasket[itemCode] = numericQty;
+    } else {
+        delete orderBasket[itemCode];
+    }
+    updateOrderBar();
+}
+
+function updateOrderBar() {
+    const orderBar = document.getElementById('orderBar');
+    const prompt = document.getElementById('top-action-prompt');
+    const countDisplay = document.getElementById('totalSelectedCount');
+
+    let totalItems = 0;
+    for (let code in orderBasket) {
+        totalItems += orderBasket[code];
+    }
+
+    if (countDisplay) countDisplay.textContent = totalItems;
+
+    if (totalItems > 0) {
+        if (orderBar) orderBar.classList.add('active');
+        if (prompt) prompt.classList.add('visible');
+    } else {
+        if (orderBar) orderBar.classList.remove('active');
+        if (prompt) prompt.classList.remove('visible');
+    }
 }
 
 function syncQuantities() {

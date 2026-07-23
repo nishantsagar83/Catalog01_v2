@@ -485,7 +485,7 @@
                 const currentQty = orderBasket[item.code] || 0;
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = <div class="image-container"> <img src="${item.image}" alt="${item.name}"> </div>
+                card.innerHTML = '<div class="image-container"> <img src="${item.image}" alt="${item.name}"> </div>
                     <div class="card-content"> 
                         <span class="category-badge">${item.category}</span> 
                                  <div class="item-name" title="${item.name}">${item.name}</div> 
@@ -495,7 +495,7 @@
                         <input type="number" class="qty-input" id="input-${item.code}"  value="${currentQty}" min="0" onchange="handleInputChange('${item.code}', this.value)"> 
                         <button class="qty-btn" onclick="updateQty('${item.code}', 1)">+</button> </div> 
                 </div> 
-                </div>;
+                </div>';
                 
             grid.appendChild(card);});}
         

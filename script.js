@@ -190,18 +190,83 @@ function syncQuantities() {
 
 // Function called by your HTML button's onclick="generatePDF()"
 function generatePDF() {
-    // Access jsPDF from the CDN bundle loaded in your <head>
+    // 1. Get selected item codes from orderBasket
+    const basketKeys = Object.keys(orderBasket);
+
+    if (basketKeys.length === 0) {
+        alert("Your order is empty. Please select quantity for at least one item.");
+        return;
+    }
+
+    // 2. Map basket keys to full product details + selected quantity
+    const selectedItems = basketKeys.map(code => {
+        const product = normalizedProducts.find(p => p.code === code) || {};
+        return {
+            code: code,
+            name: product.name || 'Unknown Item',
+            category: product.category || 'N/A',
+            qty: orderBasket[code]
+        };
+    });
+
+    // 3. Initialize jsPDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // Add content to the PDF
-    doc.setFontSize(16);
-    doc.text("Product Catalog", 10, 10);
-    
-    // Example: Loop through or add items/details here
-    doc.setFontSize(12);
-    doc.text("Generated successfully!", 10, 20);
+    // 4. PDF Header
+    doc.setFontSize(18);
+    doc.text("PURCHASE ORDER", 14, 20);
 
-    // Save and download the PDF
-    doc.save("catalog.pdf");
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 28);
+
+    // 5. Build PDF Table or List
+    let yPosition = 40;
+    
+    // Table Headers
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.setFont(undefined, 'bold');
+    doc.text("Item Code", 14, yPosition);
+    doc.text("Item Name", 50, yPosition);
+    doc.text("Category", 130, yPosition);
+    doc.text("Qty", 180, yPosition);
+
+    doc.setLineWidth(0.5);
+    doc.line(14, yPosition + 2, 195, yPosition + 2);
+
+    yPosition += 10;
+    doc.setFont(undefined, 'normal');
+
+    let totalQuantity = 0;
+
+    // 6. Loop through items and add rows
+    selectedItems.forEach(item => {
+        // Page overflow check
+        if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+        }
+
+        // Truncate long names to prevent overflow
+        const truncatedName = item.name.length > 35 ? item.name.substring(0, 32) + '...' : item.name;
+
+        doc.text(String(item.code), 14, yPosition);
+        doc.text(truncatedName, 50, yPosition);
+        doc.text(String(item.category), 130, yPosition);
+        doc.text(String(item.qty), 180, yPosition);
+
+        totalQuantity += item.qty;
+        yPosition += 8;
+    });
+
+    // 7. Summary Footer
+    doc.line(14, yPosition, 195, yPosition);
+    yPosition += 8;
+    doc.setFont(undefined, 'bold');
+    doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
+
+    // 8. Download File
+    doc.save(`Order_${Date.now()}.pdf`);
 }

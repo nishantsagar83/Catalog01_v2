@@ -447,7 +447,7 @@
         // Ensure script executes ONLY after all HTML layout nodes are parsed safely
     document.addEventListener("DOMContentLoaded", function loadCatalogData() {
     // 1. Fetch data safely
-    fetch('products.json') // or your local inventory data array
+    fetch('./products.json') // or your local inventory data array
         .then(response => {
             if (!response.ok) throw new Error("Network response error");
             return response.json();

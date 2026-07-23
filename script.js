@@ -5,27 +5,33 @@ let normalizedProducts = [];
 let orderBasket = {}; // Stores item codes and quantities
 
 let currentUser = null;
-let systemUsers = [];
+let systemUsers = [
+    // Pre-loaded fallback array ensures login works immediately regardless of local CORS/fetch limits
+    { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" },
+    { id: "USR-102", name: "Jane Smith", role: "Manager", password: "adminpassword" }
+];
 
-// Load system users on page load with fallback and debugging
 document.addEventListener("DOMContentLoaded", async function () {
+    // Attempt to load external users.json if running on a web server
     try {
         const response = await fetch('users.json');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.ok) {
+            const loadedUsers = await response.json();
+            if (Array.isArray(loadedUsers) && loadedUsers.length > 0) {
+                systemUsers = loadedUsers;
+                console.log("Loaded systemUsers from users.json");
+            }
         }
-        systemUsers = await response.json();
-        console.log("Users loaded successfully:", systemUsers);
     } catch (err) {
-        console.warn("Could not load users.json via fetch (likely local CORS rule). Using fallback testing users.", err);
-        // Fallback testing data so login works during local development
-        systemUsers = [
-            { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" },
-            { id: "USR-102", name: "Jane Smith", role: "Manager", password: "adminpassword" }
-        ];
+        console.log("Using fallback systemUsers array for local execution.");
+    }
+
+    // Attach form submit listener programmatically to guarantee event interception
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+        loginForm.addEventListener("submit", handleLogin);
     }
 });
-
 
 document.addEventListener("DOMContentLoaded", function () {
     loadCatalogData();
@@ -267,49 +273,46 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 });
 
-// Updated Login Handler with clear validation
 function handleLogin(event) {
-    if (event) event.preventDefault(); // Stop page refresh
-
-    const usernameInput = document.getElementById("usernameInput").value.trim();
-    const passwordInput = document.getElementById("passwordInput").value;
-    const loginError = document.getElementById("loginError");
-
-    console.log("Attempting login for:", usernameInput);
-    console.log("Available system users:", systemUsers);
-
-    if (systemUsers.length === 0) {
-        loginError.innerText = "User database not loaded. Please try again.";
-        loginError.style.display = "block";
-        return;
+    // Explicitly prevent page refresh
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
     }
 
+    const usernameInput = document.getElementById("usernameInput").value.trim();
+    const passwordInput = document.getElementById("passwordInput").value.trim();
+    const loginError = document.getElementById("loginError");
+
+    // Search for matching user (case-insensitive for name)
     const matchedUser = systemUsers.find(
-        u => u.name.toLowerCase() === usernameInput.toLowerCase() && String(u.password) === String(passwordInput)
+        u => u.name.toLowerCase() === usernameInput.toLowerCase() && String(u.password) === passwordInput
     );
 
     if (matchedUser) {
-        console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
-        document.getElementById("loginModal").style.display = "none";
-        document.getElementById("loginError").style.display = "none";
-        
-        // Update Header Badge
-        const userDisplay = document.getElementById("loggedInUserDisplay");
-        if (userDisplay) {
-            userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
-        }
-        const userInfo = document.getElementById("userInfo");
-        if (userInfo) {
-            userInfo.style.display = "block";
-        }
-    } else {
-        console.warn("Invalid credentials match failed.");
-        loginError.innerText = "Invalid User Name or Password";
-        loginError.style.display = "block";
-    }
-}
 
+        // Hide Modal Overlay
+        const modal = document.getElementById("loginModal");
+        if (modal) modal.style.display = "none";
+
+        // Display user details in header badge
+        const userDisplay = document.getElementById("loggedInUserDisplay");
+        if (userDisplay) userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
+
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) userInfo.style.display = "inline-flex";
+
+        console.log("Login successful as:", currentUser);
+    } else {
+        if (loginError) {
+            loginError.innerText = "Invalid Username or Password";
+            loginError.style.display = "block";
+        }
+    }
+
+    return false; // Secondary guard against form submission
+}
 
 // PDF Generation with User and Customer Meta
 async function generatePDF() {

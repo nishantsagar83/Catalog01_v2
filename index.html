@@ -14,6 +14,7 @@
             --border-color: #e2e8f0;
             --primary-color: #2563eb;
             --primary-light: #eff6ff;
+            --primary-hover: #1d4ed8;
             --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -24,6 +25,7 @@
             background-color: var(--bg-main);
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
+            padding-bottom: 100px; /* Space for the floating order bar */
         }
 
         header {
@@ -53,9 +55,9 @@
             letter-spacing: -0.02em;
         }
 
-        .controls { 
-            display: flex; 
-            gap: 12px; 
+        .controls-wrapper {
+            display: flex;
+            gap: 12px;
             flex-grow: 1;
             justify-content: flex-end;
             max-width: 600px;
@@ -73,7 +75,7 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
-        input { 
+        input[type="text"] { 
             width: 100%;
             max-width: 280px; 
         }
@@ -169,7 +171,15 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            height: 45px; /* Ensures consistent alignment regardless of text length */
+            height: 45px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            gap: 8px;
         }
 
         .item-code {
@@ -180,7 +190,101 @@
             border-radius: 6px; 
             border: 1px solid var(--border-color);
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            align-self: flex-start;
+        }
+
+        /* Order Quantity Controls Component */
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--bg-main);
+        }
+
+        .qty-btn {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            padding: 6px 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .qty-btn:hover {
+            background-color: var(--border-color);
+        }
+
+        .qty-input {
+            width: 35px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            padding: 4px 0;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: none;
+        }
+        
+        .qty-input::-webkit-outer-spin-button,
+        .qty-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Floating Actions Bar (Order Bar) */
+        .order-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            padding: 16px 24px;
+            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+            z-index: 101;
+            transform: translateY(100%);
+            transition: var(--transition-smooth);
+        }
+
+        .order-bar.active {
+            transform: translateY(0);
+        }
+
+        .order-bar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-summary-text {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .order-summary-text span {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .submit-order-btn {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .submit-order-btn:hover {
+            background-color: var(--primary-hover);
         }
 
         .no-results { 
@@ -197,11 +301,11 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
-            .controls {
+            .controls-wrapper {
                 width: 100%;
                 max-width: 100%;
             }
-            input {
+            input[type="text"] {
                 max-width: 100%;
             }
             .catalog-container {
@@ -219,6 +323,17 @@
                 font-size: 14px;
                 height: 42px;
             }
+            .card-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .qty-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .qty-input {
+                flex-grow: 1;
+            }
         }
     </style>
 </head>
@@ -227,25 +342,25 @@
     <header>
         <div class="header-container">
             <h1>SMT Catalog (<span id="itemCount">0</span>)</h1>
-            <div class="controls">
+            <div class="controls-wrapper">
                 <select id="categoryFilter">
                     <option value="all">All Categories</option>
                 </select>
-                 </div>
-                <div class="controls">
-            
                 <input type="text" id="searchInput" placeholder="Search name or code...">
             </div>
         </div>
     </header>
 
-    <main class="catalog-container">
+<main class="catalog-container">
         <div class="grid" id="productGrid"></div>
     </main>
 
     <script>
         let rawExcelData = [];
+/*Object to store item quantities dynamically. Key: item code/id, Value: quantity */
+        let orderBasket = {};
 
+        
         async function loadCatalogData() {
             try {
                 const response = await fetch('./products.json');
@@ -261,6 +376,7 @@
             }
         }
 
+        
         function initCatalog() {
             normalizeData();
             populateCategories();
@@ -362,6 +478,77 @@
             } else {
                 grid.innerHTML = htmlString;
             }
+
+
+            filteredData.forEach(item => {
+                // Determine current quantity from local basket state
+                const currentQty = orderBasket[item.code] || 0;
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = <div class="image-container"> <img src="${item.image}" alt="${item.name}"> </div>
+                    <div class="card-content"> 
+                        <span class="category-badge">${item.category}</span> 
+                                 <div class="item-name" title="${item.name}">${item.name}</div> 
+                                <div class="card-footer"> <span class="item-code">${item.code}</span> 
+                    <div class="qty-controls"> 
+                        <button class="qty-btn" onclick="updateQty('${item.code}', -1)">-</button> 
+                        <input type="number" class="qty-input" id="input-${item.code}"  value="${currentQty}" min="0" onchange="handleInputChange('${item.code}', this.value)"> 
+                        <button class="qty-btn" onclick="updateQty('${item.code}', 1)">+</button> </div> 
+                </div> 
+                </div>;
+                
+            grid.appendChild(card);});}
+        
+        // Handle adjustments from + and - buttons
+        function updateQty(itemCode, change) {
+            let currentQty = orderBasket[itemCode] || 0;
+            let newQty = currentQty + change;
+            if (newQty < 0) newQty = 0;
+            if (newQty === 0) {
+                delete orderBasket[itemCode];
+            } else {
+                orderBasket[itemCode] = newQty;
+            }
+            
+            document.getElementById(input-${itemCode}).value = newQty;
+            calculateTotals();}
+        // Handle typed input entries
+        function handleInputChange(itemCode, value) {
+            let parsedValue = parseInt(value, 10);
+            if (isNaN(parsedValue) || parsedValue <= 0) {
+                delete orderBasket[itemCode];
+                document.getElementById(input-${itemCode}).value = 0;
+            } else {
+                orderBasket[itemCode] = parsedValue;
+                document.getElementById(input-${itemCode}).value = parsedValue;
+            }
+            calculateTotals();}
+        
+        // Global aggregation for the order banner
+        function calculateTotals() {
+            let uniqueItemsCount = Object.keys(orderBasket).length;
+            let totalQuantity = Object.values(orderBasket).reduce((sum, qty) => sum + qty, 0);
+            
+            document.getElementById('totalItemsSelected').textContent = uniqueItemsCount;
+            document.getElementById('totalQtySelected').textContent = totalQuantity;
+            const orderBar = document.getElementById('orderSummaryBar');
+            
+            if (totalQuantity > 0) {
+                orderBar.classList.add('active');
+            } else {
+                orderBar.classList.remove('active');}}
+        
+        // Final payload handler
+        function submitOrder() {
+            const finalOrder = Object.keys(orderBasket).map(code => {
+                const itemDetails = rawExcelData.find(i => i.code === code);
+                return {code: code,name: itemDetails ? itemDetails.name : 'Unknown',quantity: orderBasket[code]};});
+            
+            console.log("Submitted Order Structure:", finalOrder);
+            alert("Order Summary logged to system console!\n\nUnique Items: " + finalOrder.length);}
+        // Launch catalog execution on document ready
+        
+        window.addEventListener('DOMContentLoaded', loadCatalogData);
         }
     </script>
 </body>

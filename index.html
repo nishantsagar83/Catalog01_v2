@@ -83,14 +83,22 @@
         <button id="logoutBtn" onclick="handleLogout()" class="btn-logout">Logout</button>
     </div>
 
-    <div class="customer-input-group">
-      <label for="customerNameInput">Customer Name:</label>
-      <input type="text" id="customerNameInput" placeholder="Enter customer / firm name">
-    </div>
+  
       
     <!-- Floating Action Bar for Order Summaries -->
     <div id="orderBar" class="order-bar">
         <div class="order-bar-container">
+            <div class="order-controls" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+              <label for="customerNameInput"><strong>Customer Name:</strong></label>
+              <input 
+                type="text" 
+                id="customerNameInput" 
+                placeholder="Enter customer or company name" 
+                required 
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1;"
+              />
+              <button onclick="generatePDF()" class="btn-primary">Generate PDF Order</button>
+        </div>
             <div class="order-summary-text">
                 Selected Items: <span id="totalSelectedCount">0</span>
             </div>

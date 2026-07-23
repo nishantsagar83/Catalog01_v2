@@ -436,17 +436,29 @@
             }
         }
 
-        function initCatalog() {
-            normalizeData();
-            populateCategories();
-            renderCatalog();
+        function initCatalog(data) {
+    if (!data || !Array.isArray(data)) return;
+    
+    data.forEach(item => {
+        normalizeData(item);
+    });
+}
 
-            document.getElementById('categoryFilter').addEventListener('change', renderCatalog);
-            document.getElementById('searchInput').addEventListener('input', renderCatalog);
-        }
+        // Ensure script executes ONLY after all HTML layout nodes are parsed safely
+    document.addEventListener("DOMContentLoaded", function loadCatalogData() {
+    // 1. Fetch data safely
+    fetch('YOUR_DATA_SOURCE.json') // or your local inventory data array
+        .then(response => {
+            if (!response.ok) throw new Error("Network response error");
+            return response.json();
+        })
+        .then(data => {
+            initCatalog(data);
+        })
+        .catch(error => console.error("Failed to load JSON data:", error));
+});
 
-        document.addEventListener('DOMContentLoaded', loadCatalogData);
-
+     
         var normalizedProducts = [];
 
         function getField(obj, possibleKeys) {
@@ -458,20 +470,35 @@
             return '';
         }
 
-        function normalizeData() {
-            normalizedProducts = []; 
-            for (var i = 0; i < rawExcelData.length; i++) {
-                var item = rawExcelData[i];
-                normalizedProducts.push({
-                    code: String(getField(item, ["Item Code", "ItemCode", "code"])),
-                    name: String(getField(item, ["Item Name", "ItemName", "name"])),
-                    category: String(getField(item, ["Category", "category", "cat"])),
-                    driveImg: String(getField(item, ["Product Image", "ProductImage", "image"])),
-                    relativeImg: String(getField(item, ["Product Image1", "ProductImage1", "image1"]))
-                });
-            }
-            document.getElementById('itemCount').textContent = normalizedProducts.length;
-        }
+       function normalizeData(item) {
+    // Locate the specific card element wrapper by its product footprint code
+    const cardElement = document.querySelector(`[data-code="${item.id || item.code}"]`);
+    
+    // DEFENSIVE GUARD: Skip processing smoothly if card is missing from the grid
+    if (!cardElement) {
+        console.warn(`Card element not found for product code: ${item.id || item.code}`);
+        return; 
+    }
+
+    // 2. Wrap all querySelectors in Null Protection Checks
+    const nameNode = cardElement.querySelector('.item-name');
+    if (nameNode) {
+        nameNode.textContent = item.name || item.title || "Unnamed Product";
+    } else {
+        console.error("Layout missing '.item-name' class element hook.");
+    }
+
+    const codeNode = cardElement.querySelector('.item-code');
+    if (codeNode) {
+        codeNode.textContent = item.code || item.id || "";
+    }
+
+    // Example: Dynamically sync fallback counter values if coming from localStorage/DB
+    const inputNode = cardElement.querySelector('.qty-input');
+    if (inputNode) {
+        inputNode.value = item.initialQty || 0;
+    }
+}
 
         function populateCategories() {
             var filterSelect = document.getElementById('categoryFilter');

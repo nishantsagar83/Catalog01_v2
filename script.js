@@ -1,18 +1,20 @@
 console.log("JavaScript is successfully linked!");
 
+// --- GLOBAL STATE (Declared ONCE at the top) ---
 let rawExcelData = [];
 let normalizedProducts = [];
 let orderBasket = {}; // Stores item codes and quantities
-
 let currentUser = null;
+
+// Default fallback users so local testing works even if fetch('users.json') is blocked
 let systemUsers = [
-    // Pre-loaded fallback array ensures login works immediately regardless of local CORS/fetch limits
     { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" },
     { id: "USR-102", name: "Jane Smith", role: "Manager", password: "adminpassword" }
 ];
 
+// --- INITIALIZATION ON DOM READY ---
 document.addEventListener("DOMContentLoaded", async function () {
-    // Attempt to load external users.json if running on a web server
+    // 1. Attempt to load external users.json
     try {
         const response = await fetch('users.json');
         if (response.ok) {
@@ -26,16 +28,16 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.log("Using fallback systemUsers array for local execution.");
     }
 
-    // Attach form submit listener programmatically to guarantee event interception
+    // 2. Attach login submit handler
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", handleLogin);
     }
-});
 
-document.addEventListener("DOMContentLoaded", function () {
+    // 3. Load catalog data
     loadCatalogData();
 
+    // 4. Attach filter & search listeners
     const categoryFilter = document.getElementById("categoryFilter");
     const searchInput = document.getElementById("searchInput");
 
@@ -45,40 +47,27 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchInput) {
         searchInput.addEventListener("input", renderCatalog);
     }
-});
 
-document.addEventListener("DOMContentLoaded", function () {
-    // 1. Disable Right-Click context menu on all images
+    // 5. Disable Right-Click and Drag-and-Drop on images
     document.addEventListener("contextmenu", function (e) {
-        if (e.target.tagName === "IMG") {
-            e.preventDefault();
-        }
+        if (e.target.tagName === "IMG") e.preventDefault();
     }, false);
 
-    // 2. Disable Image Drag-and-Drop saving
     document.addEventListener("dragstart", function (e) {
-        if (e.target.tagName === "IMG") {
-            e.preventDefault();
-        }
+        if (e.target.tagName === "IMG") e.preventDefault();
     }, false);
 });
 
+// --- CATALOG DATA LOADING & PROCESSING ---
 async function loadCatalogData() {
     try {
         const response = await fetch('./products.json');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         rawExcelData = await response.json();
-
-        // Build clean internal product data array
         buildNormalizedArray(rawExcelData);
-
-        // Dynamic category setup
         populateCategories();
-
-        // Render catalog DOM cards
         renderCatalog();
-
         syncQuantities();
     } catch (error) {
         console.error('Failed to load JSON data:', error);
@@ -90,16 +79,14 @@ function buildNormalizedArray(data) {
 
     normalizedProducts = data.map(item => {
         const code = item['Item Code'] || item.code || item.id || '';
-        
         return {
             code: code,
             name: item['Item Name'] || item.name || item.title || 'Unnamed Item',
             category: item['Category'] || item.category || 'Uncategorized',
-            // Ignores Drive URLs and constructs local path based on Item Code
             image: `images/${code}.png`, 
             initialQty: item.initialQty || 0
         };
-    }).filter(item => item.code !== ''); // Keep valid items only
+    }).filter(item => item.code !== '');
 }
 
 function populateCategories() {
@@ -133,7 +120,6 @@ function renderCatalog() {
     const searchTerm = searchElem ? searchElem.value.toLowerCase().trim() : '';
 
     let htmlString = '';
-    let matchCount = 0;
 
     normalizedProducts.forEach(item => {
         const itemNameLower = item.name.toLowerCase();
@@ -148,7 +134,6 @@ function renderCatalog() {
         );
 
         if (matchesCategory && matchesSearch) {
-            matchCount++;
             const qty = orderBasket[item.code] !== undefined ? orderBasket[item.code] : item.initialQty;
 
             htmlString += `
@@ -177,12 +162,12 @@ function renderCatalog() {
     updateOrderBar();
 }
 
+// --- BASKET & QUANTITY CONTROLS ---
 function adjustQty(itemCode, delta) {
     const currentQty = orderBasket[itemCode] || 0;
     const newQty = Math.max(0, currentQty + delta);
     updateQuantity(itemCode, newQty);
     
-    // Update card input UI directly
     const card = document.querySelector(`[data-code="${itemCode}"]`);
     if (card) {
         const input = card.querySelector('.qty-input');
@@ -233,48 +218,17 @@ function syncQuantities() {
     }
 }
 
-// Function called by your HTML button's onclick="generatePDF()"
-// Helper function to load an image URL into a Base64 string/HTMLImageElement
-function loadImage(url) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null); // Fallback if image fails to load
-        img.src = url;
-    });
-}
-
 function clearBasket() {
-    // 1. Reset the basket object
     orderBasket = {};
-
-    // 2. Reset all visible quantity input elements to 0
     const qtyInputs = document.querySelectorAll('.qty-input');
     qtyInputs.forEach(input => {
         input.value = 0;
     });
-
-    // 3. Update the order bar and UI state
     updateOrderBar();
 }
 
-
-let currentUser = null;
-let systemUsers = [];
-
-// Load system users on page initialization
-document.addEventListener("DOMContentLoaded", async function () {
-    try {
-        const response = await fetch('users.json');
-        systemUsers = await response.json();
-    } catch (err) {
-        console.error("Failed to load users.json:", err);
-    }
-});
-
+// --- LOGIN AUTHENTICATION ---
 function handleLogin(event) {
-    // Explicitly prevent page refresh
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -284,7 +238,6 @@ function handleLogin(event) {
     const passwordInput = document.getElementById("passwordInput").value.trim();
     const loginError = document.getElementById("loginError");
 
-    // Search for matching user (case-insensitive for name)
     const matchedUser = systemUsers.find(
         u => u.name.toLowerCase() === usernameInput.toLowerCase() && String(u.password) === passwordInput
     );
@@ -292,11 +245,9 @@ function handleLogin(event) {
     if (matchedUser) {
         currentUser = matchedUser;
 
-        // Hide Modal Overlay
         const modal = document.getElementById("loginModal");
         if (modal) modal.style.display = "none";
 
-        // Display user details in header badge
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) userDisplay.innerText = `${currentUser.name} (${currentUser.id})`;
 
@@ -311,10 +262,20 @@ function handleLogin(event) {
         }
     }
 
-    return false; // Secondary guard against form submission
+    return false;
 }
 
-// PDF Generation with User and Customer Meta
+// --- PDF GENERATION ---
+function loadImage(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+}
+
 async function generatePDF() {
     if (!currentUser) {
         alert("Please log in before generating an order.");
@@ -327,7 +288,8 @@ async function generatePDF() {
         return;
     }
 
-    const customerName = document.getElementById("customerNameInput").value.trim() || "N/A";
+    const customerInput = document.getElementById("customerNameInput");
+    const customerName = customerInput ? (customerInput.value.trim() || "N/A") : "N/A";
 
     const selectedItems = basketKeys.map(code => {
         const product = normalizedProducts.find(p => p.code === code) || {};
@@ -467,8 +429,6 @@ async function generatePDF() {
     doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
 
     // Reset customer field and clear order basket
-    document.getElementById("customerNameInput").value = "";
+    if (customerInput) customerInput.value = "";
     clearBasket();
 }
-
-

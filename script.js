@@ -219,6 +219,20 @@ function loadImage(url) {
     });
 }
 
+function clearBasket() {
+    // 1. Reset the basket object
+    orderBasket = {};
+
+    // 2. Reset all visible quantity input elements to 0
+    const qtyInputs = document.querySelectorAll('.qty-input');
+    qtyInputs.forEach(input => {
+        input.value = 0;
+    });
+
+    // 3. Update the order bar and UI state
+    updateOrderBar();
+}
+
 async function generatePDF() {
     const basketKeys = Object.keys(orderBasket);
 
@@ -374,6 +388,15 @@ async function generatePDF() {
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
     doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
+
+    // ... preceding generatePDF logic ...
+
+    // Save File
+    doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
+
+    // Auto-clear basket and reset UI after successful download
+    clearBasket();
+}
 }
 
 

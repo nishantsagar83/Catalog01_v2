@@ -17,36 +17,38 @@
 </head>
 <body>
 
-    <header>
-        <div class="header-container">
-            <div class="brand-group">
-                <div class="brand-container">
-                    <img src="images/SMT_LOGO-1.png" width="11" height="9.4" alt="SAMRAT" class="brand-logo" id="companyLogo">
-                    <div class="brand-text">
-                        <h1 class="brand-name">SAMRAT</h1>
-                        <h3 class="brand-subheading">Machine & Tools LLC.</h3>
-                    </div>
-                </div>
-                
-                <!-- Top Prompt Status Block -->
-                <div id="top-action-prompt">
-                    <span class="prompt-text">Items Selected!</span>
+<header class="catalog-header">
+    <div class="brand-container">
+        <!-- Logo on the left side -->
+        <img src="images/SMT_LOGO-1.png" alt="SAMRAT Logo" class="brand-logo" id="companyLogo">
+        
+        <!-- Brand Name & Subheading directly to its right -->
+        <div class="brand-text">
+            <h1 class="brand-name">SAMRAT</h1>
+            <p class="brand-subheading">Machine & Tools LLC.</p>
+        </div>
+    </div>
+        
+    <div class="header-container">
+        <div class="brand-group">
+            <!-- Top Prompt Status Block -->
+            <div id="top-action-prompt">
+                <span class="prompt-text">Items Selected!</span>
                     <button class="submit-order-btn btn-sm" onclick="generatePDF()">
                         <i class="fa-solid fa-file-pdf"></i> Export Order PDF
                     </button>
-                </div>
-                
-            </div>
+            </div>    
+        </div>
 
-            <div class="controls-wrapper">
-                <!-- IDs match script.js event listeners -->
-                <input type="text" id="searchInput" placeholder="Search item or code..." oninput="renderCatalog()">
+        <div class="controls-wrapper">
+            <!-- IDs match script.js event listeners -->
+            <input type="text" id="searchInput" placeholder="Search item or code..." oninput="renderCatalog()">
                 <select id="categoryFilter" onchange="renderCatalog()">
                     <option value="all">All Categories</option>
                 </select>
-            </div>
         </div>
-    </header>
+    </div>
+</header>
 
     <main class="catalog-container">
         <!-- Product Card Container -->

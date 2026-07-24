@@ -1,5 +1,9 @@
 console.log("JavaScript is successfully linked!");
 
+// --- CONFIGURATION ---
+// Replace YOUR-SUBDOMAIN with your actual Cloudflare Workers subdomain
+const API_BASE_URL = "https://smt-products-api.YOUR-SUBDOMAIN.workers.dev";
+
 // --- GLOBAL STATE (Declared ONCE at the top) ---
 let rawExcelData = [];
 let normalizedProducts = [];
@@ -14,7 +18,25 @@ let systemUsers = [
 
 // --- INITIALIZATION ON DOM READY ---
 document.addEventListener("DOMContentLoaded", async function () {
-    // 1. Attempt to load external users.json
+    // 1. Session check on page refresh
+    const savedUser = sessionStorage.getItem("loggedInUser");
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        
+        const modal = document.getElementById("loginModal");
+        if (modal) modal.style.display = "none";
+
+        const userName = currentUser["User Name"] || currentUser.name;
+        const userId = currentUser["User Id"] || currentUser.id;
+
+        const userDisplay = document.getElementById("loggedInUserDisplay");
+        if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
+
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) userInfo.style.display = "inline-flex";
+    }
+
+    // 2. Attempt to load external users.json
     try {
         const response = await fetch('users.json');
         if (response.ok) {
@@ -28,16 +50,16 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.log("Using fallback systemUsers array for local execution.");
     }
 
-    // 2. Attach login submit handler
+    // 3. Attach login submit handler
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", handleLogin);
     }
 
-    // 3. Load catalog data
-    loadCatalogData();
+    // 4. Load catalog data from Cloudflare D1 / Worker API
+    await loadCatalogData();
 
-    // 4. Attach filter & search listeners
+    // 5. Attach filter & search listeners
     const categoryFilter = document.getElementById("categoryFilter");
     const searchInput = document.getElementById("searchInput");
 
@@ -48,7 +70,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         searchInput.addEventListener("input", renderCatalog);
     }
 
-    // 5. Disable Right-Click and Drag-and-Drop on images
+    // 6. Disable Right-Click and Drag-and-Drop on images
     document.addEventListener("contextmenu", function (e) {
         if (e.target.tagName === "IMG") e.preventDefault();
     }, false);
@@ -61,7 +83,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 // --- CATALOG DATA LOADING & PROCESSING ---
 async function loadCatalogData() {
     try {
-        const response = await fetch('./products.json');
+        const response = await fetch(`${API_BASE_URL}/api/products`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         rawExcelData = await response.json();
@@ -69,8 +91,21 @@ async function loadCatalogData() {
         populateCategories();
         renderCatalog();
         syncQuantities();
+        console.log("Successfully loaded catalog data from Cloudflare D1.");
     } catch (error) {
-        console.error('Failed to load JSON data:', error);
+        console.warn('Failed to load D1 data, falling back to local products.json:', error);
+        try {
+            const fallbackResponse = await fetch('./products.json');
+            if (fallbackResponse.ok) {
+                rawExcelData = await fallbackResponse.json();
+                buildNormalizedArray(rawExcelData);
+                populateCategories();
+                renderCatalog();
+                syncQuantities();
+            }
+        } catch (fallbackError) {
+            console.error('Critical: Failed to load fallback JSON data as well.', fallbackError);
+        }
     }
 }
 
@@ -79,11 +114,12 @@ function buildNormalizedArray(data) {
 
     normalizedProducts = data.map(item => {
         const code = item['Item Code'] || item.code || item.id || '';
+        const imagePath = item['Product Image1'] || item.image || `images/${code}.png`;
         return {
             code: code,
             name: item['Item Name'] || item.name || item.title || 'Unnamed Item',
             category: item['Category'] || item.category || 'Uncategorized',
-            image: `images/${code}.png`, 
+            image: imagePath, 
             initialQty: item.initialQty || 0
         };
     }).filter(item => item.code !== '');
@@ -228,24 +264,19 @@ function clearBasket() {
 }
 
 function handleLogout() {
-    // 1. Clear current user reference
     currentUser = null;
-
-    // 2. Clear any stored session data if you are using localStorage/sessionStorage
+    sessionStorage.removeItem("loggedInUser");
     localStorage.removeItem("loggedInUser");
 
-    // 3. Hide user info in header
     const userInfo = document.getElementById("userInfo");
     if (userInfo) userInfo.style.display = "none";
 
-    // 4. Reset form fields and error messages
     const loginForm = document.getElementById("loginForm");
     if (loginForm) loginForm.reset();
 
     const loginError = document.getElementById("loginError");
     if (loginError) loginError.style.display = "none";
 
-    // 5. Show login modal again
     const modal = document.getElementById("loginModal");
     if (modal) modal.style.display = "block";
 
@@ -268,7 +299,6 @@ function handleLogin(event) {
         return false;
     }
 
-    // Match against your actual JSON keys: "User Name" and "Password"
     const matchedUser = systemUsers.find(u => {
         const dbName = String(u["User Name"] || u.name || u.username || "").trim().toLowerCase();
         const dbPass = String(u["Password"] || u.password || "").trim();
@@ -277,16 +307,13 @@ function handleLogin(event) {
     });
 
     if (matchedUser) {
-        // Add inside handleLogin right after matching:
         sessionStorage.setItem("loggedInUser", JSON.stringify(matchedUser));
         console.log("Login successful!", matchedUser);
         currentUser = matchedUser;
 
-        // 1. Hide the login modal
         const modal = document.getElementById("loginModal");
         if (modal) modal.style.display = "none";
 
-        // 2. Update header display (using "User Name" and "User Id")
         const userName = matchedUser["User Name"] || matchedUser.name;
         const userId = matchedUser["User Id"] || matchedUser.id || 'User';
 
@@ -308,7 +335,7 @@ function handleLogin(event) {
     return false;
 }
 
-// --- PDF GENERATION ---
+// --- PDF & WHATSAPP GENERATION ---
 function loadImage(url) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -319,18 +346,14 @@ function loadImage(url) {
     });
 }
 
-
-// Configure your company WhatsApp phone number here (with country code, no + or spaces)
 const COMPANY_WHATSAPP_NUMBER = "971542243526"; 
 
 async function generatePDF() {
-    // 1. Validate logged-in state
     if (!currentUser) {
         alert("Please log in before generating an order PDF.");
         return;
     }
 
-    // 2. Get customer name input
     const customerNameInput = document.getElementById("customerNameInput");
     const customerName = customerNameInput ? customerNameInput.value.trim() : "";
 
@@ -340,7 +363,6 @@ async function generatePDF() {
         return;
     }
 
-    // 3. Build selectedItems array
     const selectedItems = [];
     let totalQuantity = 0;
 
@@ -366,7 +388,6 @@ async function generatePDF() {
         return;
     }
 
-    // 4. Extract user details safely
     const repName = currentUser["User Name"] || currentUser.name || "Sales Rep";
     const repId = currentUser["User Id"] || currentUser.id || "N/A";
     const repRole = currentUser["Role"] || currentUser.role || "Sales";
@@ -378,17 +399,10 @@ async function generatePDF() {
         year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // ==========================================
-    // FEATURE 1: CREATE & SAVE ORDER JSON DATA
-    // ==========================================
     const orderData = {
         orderId: orderId,
         orderDate: isoDate,
-        salesRep: {
-            id: repId,
-            name: repName,
-            role: repRole
-        },
+        salesRep: { id: repId, name: repName, role: repRole },
         customerName: customerName,
         items: selectedItems.map(item => ({
             code: item.code,
@@ -399,15 +413,12 @@ async function generatePDF() {
         totalQuantity: totalQuantity
     };
 
-    // Save to browser's LocalStorage history array
     saveOrderToHistory(orderData);
 
-    // 5. Initialize jsPDF & Draw Header/Items
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let yPosition = 15;
 
-    // Brand Logo & Title Header
     const logoImg = await loadImage("images/SMT_LOGO-1.png");
     if (logoImg && logoImg.width > 0) {
         try {
@@ -434,7 +445,6 @@ async function generatePDF() {
         doc.text("SAMRAT Machine & Tools LLC.", 14, 22);
     }
 
-    // Document Header Info
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(0);
@@ -455,7 +465,6 @@ async function generatePDF() {
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
 
-    // Table Headers
     doc.setFont("helvetica", "bold");
     doc.text("Image", 14, yPosition);
     doc.text("Item Code", 40, yPosition);
@@ -522,32 +531,21 @@ async function generatePDF() {
     doc.setFontSize(10);
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
-    // Save PDF
     const filename = `Order_${customerName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.pdf`;
     doc.save(filename);
 
-    // ==========================================
-    // FEATURE 2: PUSH ORDER TO WHATSAPP
-    // ==========================================
     sendOrderToWhatsApp(orderData);
 
-    // Clean up inputs
     if (customerNameInput) customerNameInput.value = "";
     clearBasket();
 }
 
-/**
- * Helper to save order JSON into localStorage history
- */
 function saveOrderToHistory(order) {
     const history = JSON.parse(localStorage.getItem("smt_order_history") || "[]");
     history.push(order);
     localStorage.setItem("smt_order_history", JSON.stringify(history, null, 2));
 }
 
-/**
- * Helper to format WhatsApp message and open link
- */
 function sendOrderToWhatsApp(order) {
     let message = `🛒 *NEW PURCHASE ORDER*\n`;
     message += `-------------------------\n`;
@@ -568,69 +566,39 @@ function sendOrderToWhatsApp(order) {
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${COMPANY_WHATSAPP_NUMBER}?text=${encodedMessage}`;
-    
-    // Open WhatsApp Web/App in a new tab
     window.open(whatsappUrl, "_blank");
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    const savedUser = sessionStorage.getItem("loggedInUser");
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        
-        const modal = document.getElementById("loginModal");
-        if (modal) modal.style.display = "none";
-
-        const userName = currentUser["User Name"] || currentUser.name;
-        const userId = currentUser["User Id"] || currentUser.id;
-
-        const userDisplay = document.getElementById("loggedInUserDisplay");
-        if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
-
-        const userInfo = document.getElementById("userInfo");
-        if (userInfo) userInfo.style.display = "inline-flex";
-    }
-});
-
-
-
-
-const API_BASE_URL = "https://smt-products-api.YOUR-SUBDOMAIN.workers.dev";
-
-// READ: Fetch products from Cloudflare D1
-async function loadProductsFromD1() {
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/products`);
-        const products = await res.json();
-        return products;
-    } catch (err) {
-        console.error("Failed to load products from D1:", err);
-    }
-}
-
-// CREATE: Add new product
-async function createProduct(productData) {
-    // productData = { code: "SMT-001", name: "Nozzle", category: "Nozzles", image: "https://..." }
+// --- CRUD API HELPER FUNCTIONS FOR WORKER ---
+async function createProductAPI(productData) {
     const res = await fetch(`${API_BASE_URL}/api/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(productData)
+        body: JSON.stringify({
+            "Item Code": productData.code,
+            "Item Name": productData.name,
+            "Category": productData.category,
+            "Product Image1": productData.image
+        })
     });
     return await res.json();
 }
 
-// UPDATE: Modify existing product
-async function updateProduct(productData) {
+async function updateProductAPI(productData) {
     const res = await fetch(`${API_BASE_URL}/api/products`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(productData)
+        body: JSON.stringify({
+            "Item Code": productData.code,
+            "Item Name": productData.name,
+            "Category": productData.category,
+            "Product Image1": productData.image
+        })
     });
     return await res.json();
 }
 
-// DELETE: Remove product
-async function deleteProduct(productCode) {
+async function deleteProductAPI(productCode) {
     const res = await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(productCode)}`, {
         method: "DELETE"
     });

@@ -19,35 +19,36 @@ let systemUsers = [
 // --- INITIALIZATION ON DOM READY ---
 document.addEventListener("DOMContentLoaded", async function () {
     // 1. Session check on page refresh
-    const savedUser = sessionStorage.getItem("loggedInUser");
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        
-        const modal = document.getElementById("loginModal");
-        if (modal) modal.style.display = "none";
+const savedUser = sessionStorage.getItem("loggedInUser");
+const modal = document.getElementById("loginModal");
 
-        const userName = currentUser["User Name"] || currentUser.name;
-        const userId = currentUser["User Id"] || currentUser.id;
+if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    if (modal) modal.style.display = "none";
 
-        const userDisplay = document.getElementById("loggedInUserDisplay");
-        if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
+    const userName = currentUser["User Name"] || currentUser.name;
+    const userId = currentUser["User Id"] || currentUser.id;
 
-        const userInfo = document.getElementById("userInfo");
-        if (userInfo) userInfo.style.display = "inline-flex";
+    const userDisplay = document.getElementById("loggedInUserDisplay");
+    if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
+
+    const userInfo = document.getElementById("userInfo");
+    if (userInfo) userInfo.style.display = "inline-flex";
+    } else {
+        // Show login modal if user is not authenticated
+        if (modal) modal.style.display = "block";
     }
+}
 
-    // 2. Attempt to load external users.json
-    try {
-        const response = await fetch('users.json');
-        if (response.ok) {
-            const loadedUsers = await response.json();
-            if (Array.isArray(loadedUsers) && loadedUsers.length > 0) {
-                systemUsers = loadedUsers;
-                console.log("Loaded systemUsers from users.json");
-            }
-        }
+ // 2. Fetch authenticated users live from D1 Database
+try {
+    const response = await fetch(`${API_BASE_URL}/api/users`);
+    if (response.ok) {
+        systemUsers = await response.json();
+        console.log("Loaded systemUsers live from D1.");
+    }
     } catch (err) {
-        console.log("Using fallback systemUsers array for local execution.");
+        console.warn("Failed to load users from D1. Using fallback local users array.");
     }
 
     // 3. Attach login submit handler

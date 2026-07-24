@@ -469,4 +469,4 @@ window.addEventListener("DOMContentLoaded", () => {
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
     }
-}
+});

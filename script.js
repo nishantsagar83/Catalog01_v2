@@ -336,40 +336,62 @@ async function generatePDF() {
         return;
     }
 
-    // 3. Extract user info safely matching your users.json key names
+    // 3. Build selectedItems array from orderBasket and normalizedProducts
+    const selectedItems = [];
+    for (const code in orderBasket) {
+        const qty = orderBasket[code];
+        if (qty > 0) {
+            const product = normalizedProducts.find(p => p.code === code);
+            if (product) {
+                selectedItems.push({
+                    code: product.code,
+                    name: product.name,
+                    category: product.category,
+                    image: product.image,
+                    qty: qty
+                });
+            }
+        }
+    }
+
+    if (selectedItems.length === 0) {
+        alert("Your order basket is empty. Please select at least one item.");
+        return;
+    }
+
+    // 4. Extract user details safely matching users.json schema
     const repName = currentUser["User Name"] || currentUser.name || "Sales Rep";
     const repId = currentUser["User Id"] || currentUser.id || "N/A";
     const repRole = currentUser["Role"] || currentUser.role || "Sales";
 
-    // 4. Get order date
     const orderDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
     });
 
-    // --- jsPDF Implementation Example ---
+    // 5. Initialize jsPDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // 1. Initialize yPosition to control vertical layout spacing
     let yPosition = 20;
 
     // Header / Branding
     doc.setFontSize(18);
-    doc.text("PURCHASE ORDER", 14, 20);
+    doc.text("PURCHASE ORDER", 14, yPosition);
+    yPosition += 10;
 
     // Order & Rep Details
     doc.setFontSize(10);
-    doc.text(`Date: ${orderDate}`, 14, 30);
-    doc.text(`Customer Name: ${customerName}`, 14, 36);
-    doc.text(`Sales Representative: ${repName} (ID: ${repId})`, 14, 42);
-    doc.text(`Role: ${repRole}`, 14, 48);
+    doc.text(`Date: ${orderDate}`, 14, yPosition); yPosition += 6;
+    doc.text(`Customer Name: ${customerName}`, 14, yPosition); yPosition += 6;
+    doc.text(`Sales Representative: ${repName} (ID: ${repId})`, 14, yPosition); yPosition += 6;
+    doc.text(`Role: ${repRole}`, 14, yPosition); yPosition += 6;
 
-    doc.line(14, 52, 196, 52); // Divider line
-    
+    doc.line(14, yPosition, 196, yPosition); // Divider line
+    yPosition += 8;
+
     // Table Headers
-    yPosition += 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(0);
@@ -380,13 +402,13 @@ async function generatePDF() {
     doc.text("Qty", 180, yPosition);
 
     doc.line(14, yPosition + 2, 195, yPosition + 2);
-
     yPosition += 8;
 
     const rowHeight = 20;  
     const maxBoxSize = 14; 
     let totalQuantity = 0;
 
+    // 6. Loop through items
     for (const item of selectedItems) {
         if (yPosition + rowHeight > 270) {
             doc.addPage();
@@ -445,16 +467,14 @@ async function generatePDF() {
     doc.setFontSize(10);
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
-    //doc.save(`SAMRAT_Order_${Date.now()}.pdf`);
-
+    // Save File
     const filename = `Order_${customerName.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
     doc.save(filename);
 
-    // Reset customer field and clear order basket
-    if (customerInput) customerInput.value = "";
+    // Reset customer field and clear order basket safely
+    if (customerNameInput) customerNameInput.value = "";
     clearBasket();
 }
-
 window.addEventListener("DOMContentLoaded", () => {
     const savedUser = sessionStorage.getItem("loggedInUser");
     if (savedUser) {

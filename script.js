@@ -19,38 +19,38 @@ let systemUsers = [
 // --- INITIALIZATION ON DOM READY ---
 document.addEventListener("DOMContentLoaded", async function () {
     // 1. Session check on page refresh
-const savedUser = sessionStorage.getItem("loggedInUser");
-const modal = document.getElementById("loginModal");
-
-if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    if (modal) modal.style.display = "none";
-
-    const userName = currentUser["User Name"] || currentUser.name;
-    const userId = currentUser["User Id"] || currentUser.id;
-
-    const userDisplay = document.getElementById("loggedInUserDisplay");
-    if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
-
-    const userInfo = document.getElementById("userInfo");
-    if (userInfo) userInfo.style.display = "inline-flex";
-    } else {
-        // Show login modal if user is not authenticated
-        if (modal) modal.style.display = "block";
-    }
-}
-
- // 2. Fetch authenticated users live from D1 Database
-try {
-    const response = await fetch(`${API_BASE_URL}/api/users`);
-    if (response.ok) {
-        systemUsers = await response.json();
-        console.log("Loaded systemUsers live from D1.");
-    }
-    } catch (err) {
-        console.warn("Failed to load users from D1. Using fallback local users array.");
-    }
-
+    const savedUser = sessionStorage.getItem("loggedInUser");
+    const modal = document.getElementById("loginModal");
+    
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        if (modal) modal.style.display = "none";
+    
+        const userName = currentUser["User Name"] || currentUser.name;
+        const userId = currentUser["User Id"] || currentUser.id;
+    
+        const userDisplay = document.getElementById("loggedInUserDisplay");
+        if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
+    
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) userInfo.style.display = "inline-flex";
+        } else {
+            // Show login modal if user is not authenticated
+            if (modal) modal.style.display = "block";
+        }
+    
+    
+     // 2. Fetch authenticated users live from D1 Database
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/users`);
+        if (response.ok) {
+            systemUsers = await response.json();
+            console.log("Loaded systemUsers live from D1.");
+        }
+        } catch (err) {
+            console.warn("Failed to load users from D1. Using fallback local users array.");
+        }
+    
     // 3. Attach login submit handler
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {

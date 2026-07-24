@@ -591,3 +591,48 @@ window.addEventListener("DOMContentLoaded", () => {
         if (userInfo) userInfo.style.display = "inline-flex";
     }
 });
+
+
+
+
+const API_BASE_URL = "https://smt-products-api.YOUR-SUBDOMAIN.workers.dev";
+
+// READ: Fetch products from Cloudflare D1
+async function loadProductsFromD1() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/products`);
+        const products = await res.json();
+        return products;
+    } catch (err) {
+        console.error("Failed to load products from D1:", err);
+    }
+}
+
+// CREATE: Add new product
+async function createProduct(productData) {
+    // productData = { code: "SMT-001", name: "Nozzle", category: "Nozzles", image: "https://..." }
+    const res = await fetch(`${API_BASE_URL}/api/products`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productData)
+    });
+    return await res.json();
+}
+
+// UPDATE: Modify existing product
+async function updateProduct(productData) {
+    const res = await fetch(`${API_BASE_URL}/api/products`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productData)
+    });
+    return await res.json();
+}
+
+// DELETE: Remove product
+async function deleteProduct(productCode) {
+    const res = await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(productCode)}`, {
+        method: "DELETE"
+    });
+    return await res.json();
+}

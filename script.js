@@ -26,31 +26,32 @@ document.addEventListener("DOMContentLoaded", async function () {
         currentUser = JSON.parse(savedUser);
         if (modal) modal.style.display = "none";
     
-        const userName = currentUser["User Name"] || currentUser.name;
-        const userId = currentUser["User Id"] || currentUser.id;
+        const userName = currentUser["User Name"] || currentUser.name || currentUser.username;
+        const userId = currentUser["User Id"] || currentUser.id || currentUser.user_id;
     
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
     
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
-        } else {
-            // Show login modal if user is not authenticated
-            if (modal) modal.style.display = "block";
-        }
-    
-    
-     // 2. Fetch authenticated users live from D1 Database
+    } else {
+        if (modal) modal.style.display = "block";
+    }
+
+    // 2. Fetch authenticated users live from D1 Database
     try {
         const response = await fetch(`${API_BASE_URL}/api/users`);
         if (response.ok) {
-            systemUsers = await response.json();
-            console.log("Loaded systemUsers live from D1.");
+            const fetchedUsers = await response.json();
+            if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) {
+                systemUsers = fetchedUsers;
+                console.log("Loaded systemUsers live from D1:", systemUsers);
+            }
         }
-        } catch (err) {
-            console.warn("Failed to load users from D1. Using fallback local users array.");
-        }
-    
+    } catch (err) {
+        console.warn("Failed to load users from D1. Using fallback local users array.");
+    }
+
     // 3. Attach login submit handler
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
@@ -291,20 +292,25 @@ function handleLogin(event) {
         event.stopPropagation();
     }
 
-    const usernameInput = document.getElementById("usernameInput").value.trim();
+    const usernameInput = document.getElementById("usernameInput").value.trim().toLowerCase();
     const passwordInput = document.getElementById("passwordInput").value.trim();
     const loginError = document.getElementById("loginError");
 
     if (!systemUsers || systemUsers.length === 0) {
         console.warn("systemUsers is empty!");
+        if (loginError) {
+            loginError.innerText = "System users still loading, please try again.";
+            loginError.style.display = "block";
+        }
         return false;
     }
 
     const matchedUser = systemUsers.find(u => {
-        const dbName = String(u["User Name"] || u.name || u.username || "").trim().toLowerCase();
-        const dbPass = String(u["Password"] || u.password || "").trim();
+        // Robust property matching across standard SQL names and Excel formats
+        const dbName = String(u.username || u.name || u["User Name"] || u.user_name || u.id || "").trim().toLowerCase();
+        const dbPass = String(u.password || u["Password"] || u.pass || "").trim();
 
-        return dbName === usernameInput.toLowerCase() && dbPass === passwordInput;
+        return dbName === usernameInput && dbPass === passwordInput;
     });
 
     if (matchedUser) {
@@ -315,8 +321,8 @@ function handleLogin(event) {
         const modal = document.getElementById("loginModal");
         if (modal) modal.style.display = "none";
 
-        const userName = matchedUser["User Name"] || matchedUser.name;
-        const userId = matchedUser["User Id"] || matchedUser.id || 'User';
+        const userName = matchedUser["User Name"] || matchedUser.name || matchedUser.username;
+        const userId = matchedUser["User Id"] || matchedUser.id || matchedUser.user_id || 'User';
 
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) {

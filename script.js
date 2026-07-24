@@ -321,7 +321,7 @@ function loadImage(url) {
 
 
 // Configure your company WhatsApp phone number here (with country code, no + or spaces)
-const COMPANY_WHATSAPP_NUMBER = "201090557722"; 
+const COMPANY_WHATSAPP_NUMBER = "971542243526"; 
 
 async function generatePDF() {
     // 1. Validate logged-in state

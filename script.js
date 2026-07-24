@@ -318,9 +318,8 @@ function loadImage(url) {
         img.src = url;
     });
 }
-
 async function generatePDF() {
-    // 1. Validate logged in state
+    // 1. Validate logged-in state
     if (!currentUser) {
         alert("Please log in before generating an order PDF.");
         return;
@@ -374,21 +373,62 @@ async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    let yPosition = 20;
+    let yPosition = 15;
 
-    // Header / Branding
-    doc.setFontSize(18);
-    doc.text("PURCHASE ORDER", 14, yPosition);
-    yPosition += 10;
+    // --- BRAND HEADER & LOGO INTEGRATION ---
+    const logoImg = await loadImage("images/SMT_LOGO-1.png");
+    if (logoImg && logoImg.width > 0) {
+        try {
+            // Draw logo at top left (14, 12, height 18mm)
+            const logoHeight = 18;
+            const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+            doc.addImage(logoImg, 'PNG', 14, 12, logoWidth, logoHeight);
+            
+            // Brand Title next to logo
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(10, 80, 160); // #0A50A0 Corporate Blue
+            doc.text("SAMRAT", 14 + logoWidth + 6, 22);
 
-    // Order & Rep Details
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(80);
+            doc.text("Machine & Tools LLC.", 14 + logoWidth + 6, 28);
+        } catch (e) {
+            console.warn("Could not render logo to PDF:", e);
+        }
+    } else {
+        // Fallback brand title if logo fails to load
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.setTextColor(10, 80, 160);
+        doc.text("SAMRAT Machine & Tools LLC.", 14, 22);
+    }
+
+    // Document Type Label (Right-aligned)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text("PURCHASE ORDER", 195, 22, { align: "right" });
+
+    yPosition = 38;
+
+    // Divider Line
+    doc.setDrawColor(200);
+    doc.line(14, yPosition, 195, yPosition);
+    yPosition += 8;
+
+    // Order & Rep Details Section
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
+    doc.setTextColor(0);
+
     doc.text(`Date: ${orderDate}`, 14, yPosition); yPosition += 6;
     doc.text(`Customer Name: ${customerName}`, 14, yPosition); yPosition += 6;
     doc.text(`Sales Representative: ${repName} (ID: ${repId})`, 14, yPosition); yPosition += 6;
-    doc.text(`Role: ${repRole}`, 14, yPosition); yPosition += 6;
+    doc.text(`Role: ${repRole}`, 14, yPosition); yPosition += 8;
 
-    doc.line(14, yPosition, 196, yPosition); // Divider line
+    doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
 
     // Table Headers
@@ -471,10 +511,12 @@ async function generatePDF() {
     const filename = `Order_${customerName.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
     doc.save(filename);
 
-    // Reset customer field and clear order basket safely
+    // Clean up inputs
     if (customerNameInput) customerNameInput.value = "";
     clearBasket();
 }
+
+
 window.addEventListener("DOMContentLoaded", () => {
     const savedUser = sessionStorage.getItem("loggedInUser");
     if (savedUser) {

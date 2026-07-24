@@ -2,7 +2,7 @@ console.log("JavaScript is successfully linked!");
 
 // --- CONFIGURATION ---
 // Replace YOUR-SUBDOMAIN with your actual Cloudflare Workers subdomain
-const API_BASE_URL = "https://smt-products-api.YOUR-SUBDOMAIN.workers.dev";
+const API_BASE_URL = "https://smt-products-api.smtdxb.workers.dev";
 
 // --- GLOBAL STATE (Declared ONCE at the top) ---
 let rawExcelData = [];

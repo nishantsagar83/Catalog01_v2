@@ -13,9 +13,9 @@
 
     <!-- External CSS -->
     <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
+
 <!-- LOGIN MODAL OVERLAY -->
 <div id="loginModal" class="login-overlay">
   <div class="login-card">
@@ -38,12 +38,14 @@
     </form>
   </div>
 </div>
+
+<!-- MAIN CATALOG HEADER -->
 <header class="catalog-header">
     <div class="brand-container">
         <!-- Logo on the left side -->
         <img src="images/SMT_LOGO-1.png" alt="SAMRAT Logo" class="brand-logo" id="companyLogo">
         
-        <!-- Brand Name & Subheading directly to its right -->
+        <!-- Brand Name & Subheading -->
         <div class="brand-text">
             <h1 class="brand-name">SAMRAT</h1>
             <p class="brand-subheading">Machine & Tools LLC.</p>
@@ -52,77 +54,65 @@
         
     <div class="header-container">
         <div class="brand-group">
+            <!-- User Info Badge & Logout moved to top header -->
+            <div id="userInfo" class="user-info-badge" style="display: none; align-items: center; gap: 10px;">
+                👤 <span id="loggedInUserDisplay"></span>
+                <button id="logoutBtn" onclick="handleLogout()" class="btn-logout">Logout</button>
+            </div>
+
             <!-- Top Prompt Status Block -->
             <div id="top-action-prompt">
                 <span class="prompt-text">Items Selected!</span>
-                    <button class="submit-order-btn btn-sm" onclick="generatePDF()">
-                        <i class="fa-solid fa-file-pdf"></i> Export Order PDF
-                    </button>
+                <button class="submit-order-btn btn-sm" onclick="generatePDF()">
+                    <i class="fa-solid fa-file-pdf"></i> Export Order PDF
+                </button>
             </div>    
         </div>
 
         <div class="controls-wrapper">
-            <!-- IDs match script.js event listeners -->
             <input type="text" id="searchInput" placeholder="Search item or code..." oninput="renderCatalog()">
-                <select id="categoryFilter" onchange="renderCatalog()">
-                    <option value="all">All Categories</option>
-                </select>
+            <select id="categoryFilter" onchange="renderCatalog()">
+                <option value="all">All Categories</option>
+            </select>
         </div>
     </div>
 </header>
 
+    <!-- PRODUCT CATALOG GRID -->
     <main class="catalog-container">
-        <!-- Product Card Container -->
         <div class="grid" id="productGrid"></div>
     </main>
 
-    <!-- User Greeting & Customer Input Controls -->
-  <div class="header-controls">
-    <div id="userInfo" class="user-info-badge" style="display: none; align-items: center; gap: 10px;">
-      👤 <span id="loggedInUserDisplay"></span>
-        <button id="logoutBtn" onclick="handleLogout()" class="btn-logout">Logout</button>
-    </div>
-
-  
-      
-    <!-- Floating Action Bar for Order Summaries -->
+    <!-- FLOATING ACTION BAR FOR ORDERS -->
     <div id="orderBar" class="order-bar">
-        <div class="order-bar-container">
-            <div class="order-controls" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
-              <label for="customerNameInput"><strong>Customer Name:</strong></label>
-              <input 
-                type="text" 
-                id="customerNameInput" 
-                placeholder="Enter customer or company name" 
-                required 
-                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1;"
-              />
-              <button onclick="generatePDF()" class="btn-primary">Generate PDF Order</button>
-        </div>
+        <div class="order-bar-container" style="display: flex; gap: 15px; align-items: center; width: 100%;">
             <div class="order-summary-text">
-                Selected Items: <span id="totalSelectedCount">0</span>
+                Selected Items: <strong id="totalSelectedCount">0</strong>
             </div>
-            <button class="submit-order-btn" onclick="generatePDF()">
-                <i class="fa-solid fa-file-pdf"></i> Generate Order PDF
-            </button>
-            <!-- Example placement inside your orderBar container -->
-            <div id="orderBar" class="order-bar">
-                <span class="order-count">Selected Items: <strong id="totalSelectedCount">0</strong></span>   
+
+            <div class="order-controls" style="display: flex; gap: 10px; align-items: center; flex-grow: 1;">
+                <label for="customerNameInput"><strong>Customer Name:</strong></label>
+                <input 
+                    type="text" 
+                    id="customerNameInput" 
+                    placeholder="Enter customer or company name" 
+                    required 
+                    style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1;"
+                />
+            </div>
+
+            <div class="order-actions" style="display: flex; gap: 10px; align-items: center;">
+                <button class="submit-order-btn" onclick="generatePDF()">
+                    <i class="fa-solid fa-file-pdf"></i> Generate Order PDF
+                </button>
+                <button type="button" class="btn-clear" onclick="clearBasket()" title="Clear Basket">
+                    🗑️ Clear
+                </button>
             </div>
         </div>
-         <div class="order-actions">
-                    <!-- Clear Basket Icon Button -->
-                    <button type="button" class="btn-clear" onclick="clearBasket()" title="Clear Basket">
-                        🗑️ Clear
-                    </button>
-                </div>
     </div>
 
-    
-
-
-    
-    <!-- External JS (defer ensures DOM parsing complete before script runs) -->
+    <!-- External JS -->
     <script src="script.js" defer></script>
 </body>
 </html>

@@ -352,6 +352,9 @@ async function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
+    // 1. Initialize yPosition to control vertical layout spacing
+    let yPosition = 20;
+
     // Header / Branding
     doc.setFontSize(18);
     doc.text("PURCHASE ORDER", 14, 20);

@@ -318,6 +318,11 @@ function loadImage(url) {
         img.src = url;
     });
 }
+
+
+// Configure your company WhatsApp phone number here (with country code, no + or spaces)
+const COMPANY_WHATSAPP_NUMBER = "919876543210"; 
+
 async function generatePDF() {
     // 1. Validate logged-in state
     if (!currentUser) {
@@ -335,8 +340,10 @@ async function generatePDF() {
         return;
     }
 
-    // 3. Build selectedItems array from orderBasket and normalizedProducts
+    // 3. Build selectedItems array
     const selectedItems = [];
+    let totalQuantity = 0;
+
     for (const code in orderBasket) {
         const qty = orderBasket[code];
         if (qty > 0) {
@@ -349,6 +356,7 @@ async function generatePDF() {
                     image: product.image,
                     qty: qty
                 });
+                totalQuantity += qty;
             }
         }
     }
@@ -358,36 +366,58 @@ async function generatePDF() {
         return;
     }
 
-    // 4. Extract user details safely matching users.json schema
+    // 4. Extract user details safely
     const repName = currentUser["User Name"] || currentUser.name || "Sales Rep";
     const repId = currentUser["User Id"] || currentUser.id || "N/A";
     const repRole = currentUser["Role"] || currentUser.role || "Sales";
 
-    const orderDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+    const timestamp = Date.now();
+    const orderId = `ORD-${timestamp}`;
+    const isoDate = new Date().toISOString();
+    const formattedDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // 5. Initialize jsPDF
+    // ==========================================
+    // FEATURE 1: CREATE & SAVE ORDER JSON DATA
+    // ==========================================
+    const orderData = {
+        orderId: orderId,
+        orderDate: isoDate,
+        salesRep: {
+            id: repId,
+            name: repName,
+            role: repRole
+        },
+        customerName: customerName,
+        items: selectedItems.map(item => ({
+            code: item.code,
+            name: item.name,
+            category: item.category,
+            quantity: item.qty
+        })),
+        totalQuantity: totalQuantity
+    };
+
+    // Save to browser's LocalStorage history array
+    saveOrderToHistory(orderData);
+
+    // 5. Initialize jsPDF & Draw Header/Items
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
     let yPosition = 15;
 
-    // --- BRAND HEADER & LOGO INTEGRATION ---
+    // Brand Logo & Title Header
     const logoImg = await loadImage("images/SMT_LOGO-1.png");
     if (logoImg && logoImg.width > 0) {
         try {
-            // Draw logo at top left (14, 12, height 18mm)
             const logoHeight = 18;
             const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
             doc.addImage(logoImg, 'PNG', 14, 12, logoWidth, logoHeight);
             
-            // Brand Title next to logo
             doc.setFont("helvetica", "bold");
             doc.setFontSize(22);
-            doc.setTextColor(10, 80, 160); // #0A50A0 Corporate Blue
+            doc.setTextColor(10, 80, 160);
             doc.text("SAMRAT", 14 + logoWidth + 6, 22);
 
             doc.setFont("helvetica", "normal");
@@ -395,47 +425,38 @@ async function generatePDF() {
             doc.setTextColor(80);
             doc.text("Machine & Tools LLC.", 14 + logoWidth + 6, 28);
         } catch (e) {
-            console.warn("Could not render logo to PDF:", e);
+            console.warn("Logo rendering skipped:", e);
         }
     } else {
-        // Fallback brand title if logo fails to load
         doc.setFont("helvetica", "bold");
         doc.setFontSize(20);
         doc.setTextColor(10, 80, 160);
         doc.text("SAMRAT Machine & Tools LLC.", 14, 22);
     }
 
-    // Document Type Label (Right-aligned)
+    // Document Header Info
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.text("PURCHASE ORDER", 195, 22, { align: "right" });
 
     yPosition = 38;
-
-    // Divider Line
     doc.setDrawColor(200);
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
 
-    // Order & Rep Details Section
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.setTextColor(0);
-
-    doc.text(`Date: ${orderDate}`, 14, yPosition); yPosition += 6;
+    doc.text(`Order ID: ${orderId}`, 14, yPosition); yPosition += 6;
+    doc.text(`Date: ${formattedDate}`, 14, yPosition); yPosition += 6;
     doc.text(`Customer Name: ${customerName}`, 14, yPosition); yPosition += 6;
-    doc.text(`Sales Representative: ${repName} (ID: ${repId})`, 14, yPosition); yPosition += 6;
-    doc.text(`Role: ${repRole}`, 14, yPosition); yPosition += 8;
+    doc.text(`Sales Representative: ${repName} (ID: ${repId})`, 14, yPosition); yPosition += 8;
 
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
 
     // Table Headers
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(0);
-
     doc.text("Image", 14, yPosition);
     doc.text("Item Code", 40, yPosition);
     doc.text("Item / Category", 75, yPosition);
@@ -446,9 +467,7 @@ async function generatePDF() {
 
     const rowHeight = 20;  
     const maxBoxSize = 14; 
-    let totalQuantity = 0;
 
-    // 6. Loop through items
     for (const item of selectedItems) {
         if (yPosition + rowHeight > 270) {
             doc.addPage();
@@ -456,11 +475,10 @@ async function generatePDF() {
         }
 
         const imgElement = await loadImage(item.image);
-        if (imgElement && imgElement.width > 0 && imgElement.height > 0) {
+        if (imgElement && imgElement.width > 0) {
             try {
                 let imgWidth = maxBoxSize;
                 let imgHeight = maxBoxSize;
-
                 const ratio = imgElement.width / imgElement.height;
                 if (ratio > 1) {
                     imgHeight = maxBoxSize / ratio;
@@ -470,7 +488,6 @@ async function generatePDF() {
 
                 const xOffset = 14 + (maxBoxSize - imgWidth) / 2;
                 const yOffset = yPosition + (maxBoxSize - imgHeight) / 2;
-
                 doc.addImage(imgElement, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
             } catch (e) {}
         }
@@ -496,26 +513,65 @@ async function generatePDF() {
         doc.setTextColor(0);
         doc.text(String(item.qty), 180, yPosition + 8);
 
-        totalQuantity += item.qty;
         yPosition += rowHeight;
     }
 
-    // Summary Footer
     doc.line(14, yPosition, 195, yPosition);
     yPosition += 8;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text(`Total Quantities Ordered: ${totalQuantity}`, 14, yPosition);
 
-    // Save File
-    const filename = `Order_${customerName.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
+    // Save PDF
+    const filename = `Order_${customerName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.pdf`;
     doc.save(filename);
+
+    // ==========================================
+    // FEATURE 2: PUSH ORDER TO WHATSAPP
+    // ==========================================
+    sendOrderToWhatsApp(orderData);
 
     // Clean up inputs
     if (customerNameInput) customerNameInput.value = "";
     clearBasket();
 }
 
+/**
+ * Helper to save order JSON into localStorage history
+ */
+function saveOrderToHistory(order) {
+    const history = JSON.parse(localStorage.getItem("smt_order_history") || "[]");
+    history.push(order);
+    localStorage.setItem("smt_order_history", JSON.stringify(history, null, 2));
+}
+
+/**
+ * Helper to format WhatsApp message and open link
+ */
+function sendOrderToWhatsApp(order) {
+    let message = `🛒 *NEW PURCHASE ORDER*\n`;
+    message += `-------------------------\n`;
+    message += `📋 *Order ID:* ${order.orderId}\n`;
+    message += `👤 *Customer:* ${order.customerName}\n`;
+    message += `👨‍💼 *Sales Rep:* ${order.salesRep.name} (${order.salesRep.id})\n`;
+    message += `📅 *Date:* ${new Date(order.orderDate).toLocaleDateString()}\n`;
+    message += `-------------------------\n`;
+    message += `📦 *ITEMS ORDERED:*\n`;
+
+    order.items.forEach((item, idx) => {
+        message += `${idx + 1}. *${item.code}* - ${item.name}\n`;
+        message += `   Category: ${item.category} | *Qty: ${item.quantity}*\n`;
+    });
+
+    message += `-------------------------\n`;
+    message += `📊 *Total Quantity:* ${order.totalQuantity}\n`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${COMPANY_WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    
+    // Open WhatsApp Web/App in a new tab
+    window.open(whatsappUrl, "_blank");
+}
 
 window.addEventListener("DOMContentLoaded", () => {
     const savedUser = sessionStorage.getItem("loggedInUser");

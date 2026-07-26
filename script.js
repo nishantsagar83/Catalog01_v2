@@ -157,43 +157,15 @@ function renderCatalog() {
     const selectedCategory = categoryElem ? categoryElem.value : 'all';
     const searchTerm = searchElem ? searchElem.value.toLowerCase().trim() : '';
 
+    // Check if a user is currently logged in
+    const isLoggedIn = currentUser !== null;
+
     let htmlString = '';
 
-    // Inside renderCatalog() loop in script.js:
-const isAdminOrSales = currentUser !== null; // Show controls if logged in
-
-htmlString += `
-    <div class="product-card" data-code="${item.code}">
-        <div class="image-container">
-            <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null; this.src='images/placeholder.png';" />
-        </div>
-        <div class="card-content">
-            <span class="category-badge">${item.category}</span>
-            <h3 class="item-name">${item.name}</h3>
-            <div class="card-footer">
-                <span class="item-code">${item.code}</span>
-                <div class="qty-controls">
-                    <button type="button" class="qty-btn" onclick="adjustQty('${item.code}', -1)">-</button>
-                    <input type="number" class="qty-input" min="0" value="${qty}" onchange="updateQuantity('${item.code}', this.value)" />
-                    <button type="button" class="qty-btn" onclick="adjustQty('${item.code}', 1)">+</button>
-                </div>
-            </div>
-
-            <!-- ADMIN / CRUD ACTION BUTTONS -->
-            ${isAdminOrSales ? `
-                <div class="admin-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                    <button class="btn-edit" onclick="openEditModal('${item.code}')" style="background:#0a50a0; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; flex:1;">Edit</button>
-                    <button class="btn-delete" onclick="handleDeleteProduct('${item.code}')" style="background:#d9534f; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; flex:1;">Delete</button>
-                </div>
-            ` : ''}
-        </div>
-    </div>
-`;
-
     normalizedProducts.forEach(item => {
-        const itemNameLower = item.name.toLowerCase();
-        const itemCodeLower = item.code.toLowerCase();
-        const itemCategoryLower = item.category.toLowerCase();
+        const itemNameLower = (item.name || '').toLowerCase();
+        const itemCodeLower = (item.code || '').toLowerCase();
+        const itemCategoryLower = (item.category || '').toLowerCase();
 
         const matchesCategory = (selectedCategory === 'all' || item.category === selectedCategory);
         const matchesSearch = (
@@ -203,7 +175,7 @@ htmlString += `
         );
 
         if (matchesCategory && matchesSearch) {
-            const qty = orderBasket[item.code] !== undefined ? orderBasket[item.code] : item.initialQty;
+            const qty = orderBasket[item.code] !== undefined ? orderBasket[item.code] : (item.initialQty || 0);
 
             htmlString += `
                 <div class="product-card" data-code="${item.code}">
@@ -221,6 +193,13 @@ htmlString += `
                                 <button type="button" class="qty-btn" onclick="adjustQty('${item.code}', 1)">+</button>
                             </div>
                         </div>
+
+                        ${isLoggedIn ? `
+                            <div class="admin-actions" style="margin-top: 10px; display: flex; gap: 8px;">
+                                <button class="btn-edit" onclick="openEditModal('${item.code}')" style="background:#0a50a0; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; flex:1;">Edit</button>
+                                <button class="btn-delete" onclick="handleDeleteProduct('${item.code}')" style="background:#d9534f; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; flex:1;">Delete</button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -230,6 +209,7 @@ htmlString += `
     grid.innerHTML = htmlString || '<p class="no-results">No products found.</p>';
     updateOrderBar();
 }
+
 
 // --- BASKET & QUANTITY CONTROLS ---
 function adjustQty(itemCode, delta) {

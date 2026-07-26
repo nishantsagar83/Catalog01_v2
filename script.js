@@ -796,6 +796,13 @@ function openEditModal(code) {
     }
 
     populateCategories();
+    const categorySelect = document.getElementById("modalCategorySelect");
+    const productCategory = product.category || product["Category"] || "";
+    
+    if (categorySelect) {
+        // Check if category exists in dropdown, otherwise handle or default
+        categorySelect.value = productCategory;
+    }
     
     const product = normalizedProducts.find(p => p.code === code);
     if (!product) return;

@@ -687,3 +687,86 @@ async function handleDeleteProduct(code) {
         await loadCatalogData(); // Refresh list from D1
     }
 }
+
+
+// 1. Populate Category Dropdown from existing loaded products
+function populateCategoriesDropdown() {
+  const categorySelect = document.getElementById("productCategory");
+  
+  // Extract unique categories from global products array
+  const categories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
+  
+  categorySelect.innerHTML = '<option value="">Select Category...</option>';
+  categories.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    categorySelect.appendChild(opt);
+  });
+}
+
+// 2. Helper to convert uploaded PNG File to Base64
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// 3. Handle Form Submit (Add / Edit Product)
+async function handleSaveProduct(event) {
+  event.preventDefault();
+
+  const code = document.getElementById("productCode").value.trim();
+  const name = document.getElementById("productName").value.trim();
+  const category = document.getElementById("productCategory").value;
+  const imageInput = document.getElementById("productImageFile");
+
+  let imageUrl = currentEditingProduct ? currentEditingProduct.image : "";
+
+  // If a new PNG file was selected, upload it
+  if (imageInput.files && imageInput.files[0]) {
+    const file = imageInput.files[0];
+    if (file.type !== "image/png") {
+      alert("Please select a valid PNG image file.");
+      return;
+    }
+
+    const base64Data = await fileToBase64(file);
+
+    // Upload image to Worker
+    const uploadRes = await fetch("/api/upload-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        itemCode: code,
+        imageData: base64Data
+      })
+    });
+
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok) {
+      alert("Image upload failed: " + uploadData.error);
+      return;
+    }
+    imageUrl = uploadData.imageUrl;
+  }
+
+  // Save product data to D1 via Worker
+  const method = isEditing ? "PUT" : "POST";
+  const response = await fetch("/api/products", {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, name, category, image: imageUrl })
+  });
+
+  if (response.ok) {
+    alert("Product saved successfully!");
+    loadProducts(); // Reload product list
+  } else {
+    const err = await response.json();
+    alert("Error: " + err.error);
+  }
+}

@@ -125,12 +125,20 @@ function buildNormalizedArray(data) {
         const code = item['Item Code'] || item.code || item.id || '';
         let rawImg = item['Product Image'] || item.image || `${code}.png`;
 
-        // Normalize URL to target the Cloudflare Worker R2 route
         let imageUrl = rawImg;
+
+        // Check if rawImg is already a full http/https URL
         if (!rawImg.startsWith("http://") && !rawImg.startsWith("https://")) {
-            // Remove redundant local folder prefixes if existing (e.g. "images/")
-            const cleanFileName = rawImg.replace(/^images\//, "");
-            imageUrl = `${WORKER_IMAGE_BASE}/${cleanFileName}`;
+            // Strip any legacy relative path prefix like "./images/" or "images/"
+            const cleanFileName = rawImg.replace(/^(\.\/)?images\//, "");
+            
+            // Encode spaces and special characters safely for the URL path
+            const encodedFileName = encodeURIComponent(cleanFileName);
+            
+            imageUrl = `${WORKER_IMAGE_BASE}/${encodedFileName}`;
+        } else {
+            // If it's already a full URL, ensure spaces inside the URL path are encoded
+            imageUrl = rawImg.replace(/ /g, "%20");
         }
 
         return {

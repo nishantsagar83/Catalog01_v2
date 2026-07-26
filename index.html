@@ -18,6 +18,7 @@
         .controls input, .controls select, .controls button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
         .controls input, .controls select { flex: 1; min-width: 200px; }
         .btn-add { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; display: none; }
+        .btn-manage-categories { background: #17a2b8; color: white; border: none; cursor: pointer; font-weight: bold; display: none; }
 
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 0 20px; max-width: 1200px; margin: 0 auto; }
         .product-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
@@ -76,6 +77,7 @@
         <select id="categoryFilter">
             <option value="all">All Categories</option>
         </select>
+        <button class="btn-manage-categories" onclick="openCategoryManagerModal()">⚙️ Manage Categories</button>
         <button class="btn-add" onclick="openAddModal()">+ Add Product</button>
     </div>
 
@@ -149,7 +151,115 @@
         </div>
     </div>
 
+    <!-- Category Manager Modal -->
+    <div id="categoryManagerModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-btn" onclick="closeCategoryManagerModal()">&times;</span>
+            <h2>Manage Categories</h2>
+            
+            <div style="margin-bottom: 15px; display: flex; gap: 8px;">
+                <input type="text" id="managerNewCategoryInput" placeholder="New category name..." style="margin-bottom:0;" />
+                <button type="button" onclick="handleManagerAddCategory()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Add</button>
+            </div>
+
+            <div id="categoryManagerList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #fafafa;">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
     <!-- Main JavaScript File -->
     <script src="script.js"></script>
+    <script>
+        // Inline UI wrappers for Category Management Modal
+        function openCategoryManagerModal() {
+            if (typeof isManager === 'function' && !isManager()) {
+                alert("Access denied: Only Managers can manage categories.");
+                return;
+            }
+            renderCategoryManagerList();
+            document.getElementById('categoryManagerModal').style.display = 'block';
+        }
+
+        function closeCategoryManagerModal() {
+            document.getElementById('categoryManagerModal').style.display = 'none';
+        }
+
+        function renderCategoryManagerList() {
+            const container = document.getElementById('categoryManagerList');
+            if (!container) return;
+
+            const categoriesSet = new Set(
+                (typeof normalizedProducts !== 'undefined' ? normalizedProducts : [])
+                    .map(p => p.category)
+                    .filter(cat => cat && cat.trim() !== '')
+            );
+            const sortedCategories = Array.from(categoriesSet).sort();
+
+            if (sortedCategories.length === 0) {
+                container.innerHTML = '<p style="color: #777; text-align: center; padding: 10px;">No categories found.</p>';
+                return;
+            }
+
+            let html = '';
+            sortedCategories.forEach(cat => {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; background: white; margin-bottom: 4px; border-radius: 4px;">
+                        <span style="font-weight: 500; font-size: 14px;">${cat}</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" onclick="handleManagerRenameCategory('${cat.replace(/'/g, "\\'")}')" style="background: #0a50a0; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">Rename</button>
+                            <button type="button" onclick="handleManagerDeleteCategory('${cat.replace(/'/g, "\\'")}')" style="background: #d9534f; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function handleManagerAddCategory() {
+            const input = document.getElementById('managerNewCategoryInput');
+            const val = input.value.trim();
+            if (!val) {
+                alert('Please enter a category name.');
+                return;
+            }
+            if (typeof addCategory === 'function') {
+                const success = await addCategory(val);
+                if (success) {
+                    input.value = '';
+                    renderCategoryManagerList();
+                }
+            }
+        }
+
+        async function handleManagerRenameCategory(oldName) {
+            const newName = prompt(`Enter new name for category "${oldName}":`, oldName);
+            if (!newName || !newName.trim() || newName.trim() === oldName) return;
+            
+            if (typeof updateCategory === 'function') {
+                const success = await updateCategory(oldName, newName.trim());
+                if (success) {
+                    renderCategoryManagerList();
+                }
+            }
+        }
+
+        async function handleManagerDeleteCategory(categoryName) {
+            if (typeof deleteCategory === 'function') {
+                await deleteCategory(categoryName);
+                renderCategoryManagerList();
+            }
+        }
+
+        // Toggle visibility of manage button based on role
+        document.addEventListener("DOMContentLoaded", () => {
+            const checkManagerBtnInterval = setInterval(() => {
+                const manageBtn = document.querySelector('.btn-manage-categories');
+                if (manageBtn && typeof isManager === 'function') {
+                    manageBtn.style.display = isManager() ? 'inline-block' : 'none';
+                }
+            }, 500);
+        });
+    </script>
 </body>
 </html>

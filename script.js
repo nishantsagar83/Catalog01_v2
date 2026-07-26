@@ -157,17 +157,29 @@ function buildNormalizedArray(data) {
     }).filter(item => item.code !== '');
 }
 
-function populateCategories() {
+
+async function populateCategories() {
     const filterSelect = document.getElementById('categoryFilter');
     const modalCatSelect = document.getElementById('modalCategorySelect');
 
-    const categoriesSet = new Set(
-        normalizedProducts
-            .map(p => p.category)
-            .filter(cat => cat && cat.trim() !== '')
-    );
+    let sortedCategories = [];
 
-    const sortedCategories = Array.from(categoriesSet).sort();
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/categories`);
+        if (response.ok) {
+            const categoriesData = await response.json();
+            sortedCategories = categoriesData.map(c => c.name).filter(cat => cat && cat.trim() !== '').sort();
+        }
+    } catch (err) {
+        console.warn("Failed to fetch master categories list, falling back to products:", err);
+        // Fallback to product extraction if API is unreachable
+        const categoriesSet = new Set(
+            (typeof normalizedProducts !== 'undefined' ? normalizedProducts : [])
+                .map(p => p.category)
+                .filter(cat => cat && cat.trim() !== '')
+        );
+        sortedCategories = Array.from(categoriesSet).sort();
+    }
 
     if (filterSelect) {
         let html = '<option value="all">All Categories</option>';
@@ -186,6 +198,8 @@ function populateCategories() {
         modalCatSelect.innerHTML = modalHtml;
     }
 }
+
+
 
 // --- ROLE HELPER ---
 function isManager() {
@@ -952,7 +966,12 @@ async function addCategory(categoryName) {
             return false;
         }
         alert('Category added successfully!');
-        await loadCatalogData(); // Refreshes products and populates dropdowns
+        // CRITICAL: Refresh catalog data and re-render dropdown lists across UI
+        if (typeof loadCatalogData === 'function') {
+            await loadCatalogData();
+        } else if (typeof fetchCategories === 'function') {
+            await fetchCategories();
+        }
         return true;
     } catch (err) {
         alert('Failed to add category: ' + err.message);

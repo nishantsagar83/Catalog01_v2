@@ -2,7 +2,7 @@ console.log("JavaScript is successfully linked!");
 
 // --- CONFIGURATION ---
 const API_BASE_URL = "https://smt-products-api.smtdxb.workers.dev";
-const WORKER_IMAGE_BASE = "https://catalog-images.smtdxb.workers.dev";
+const WORKER_IMAGE_BASE = "https://smt-products-api.smtdxb.workers.dev";
 const COMPANY_WHATSAPP_NUMBER = "971542243526"; 
 
 // --- GLOBAL STATE ---

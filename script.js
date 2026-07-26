@@ -642,3 +642,68 @@ async function deleteProductAPI(productCode) {
     });
     return await res.json();
 }
+
+
+// --- PRODUCT MODAL CONTROLS ---
+function openAddModal() {
+    document.getElementById("productModalTitle").innerText = "Add New Product";
+    document.getElementById("modalMode").value = "ADD";
+    document.getElementById("modalCode").value = "";
+    document.getElementById("modalCode").disabled = false;
+    document.getElementById("modalName").value = "";
+    document.getElementById("modalCategory").value = "";
+    document.getElementById("modalImage").value = "";
+    document.getElementById("productModal").style.display = "block";
+}
+
+function openEditModal(code) {
+    const product = normalizedProducts.find(p => p.code === code);
+    if (!product) return;
+
+    document.getElementById("productModalTitle").innerText = "Edit Product";
+    document.getElementById("modalMode").value = "EDIT";
+    document.getElementById("modalCode").value = product.code;
+    document.getElementById("modalCode").disabled = true; // Code should not be modified on update
+    document.getElementById("modalName").value = product.name;
+    document.getElementById("modalCategory").value = product.category;
+    document.getElementById("modalImage").value = product.image;
+    document.getElementById("productModal").style.display = "block";
+}
+
+function closeProductModal() {
+    document.getElementById("productModal").style.display = "none";
+}
+
+// Handle Form Submission for Create & Update
+document.addEventListener("DOMContentLoaded", function () {
+    const productForm = document.getElementById("productForm");
+    if (productForm) {
+        productForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const mode = document.getElementById("modalMode").value;
+            const productData = {
+                code: document.getElementById("modalCode").value.trim(),
+                name: document.getElementById("modalName").value.trim(),
+                category: document.getElementById("modalCategory").value.trim(),
+                image: document.getElementById("modalImage").value.trim()
+            };
+
+            if (mode === "ADD") {
+                await createProductAPI(productData);
+            } else {
+                await updateProductAPI(productData);
+            }
+
+            closeProductModal();
+            await loadCatalogData(); // Refresh list from D1
+        });
+    }
+});
+
+// Handle Delete Action
+async function handleDeleteProduct(code) {
+    if (confirm(`Are you sure you want to delete item "${code}"?`)) {
+        await deleteProductAPI(code);
+        await loadCatalogData(); // Refresh list from D1
+    }
+}

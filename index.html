@@ -40,13 +40,22 @@
         .btn-submit-order { background: #0a50a0; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         /* Modal Styles */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { background: white; width: 90%; max-width: 400px; margin: 100px auto; padding: 20px; border-radius: 8px; position: relative; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+        .modal-content { background: white; width: 90%; max-width: 450px; margin: 60px auto; padding: 20px; border-radius: 8px; position: relative; }
         .modal-content h2 { margin-bottom: 15px; }
-        .modal-content input { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; }
-        .modal-content button { width: 100%; padding: 10px; background: #0a50a0; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .modal-content label { display: block; font-size: 12px; font-weight: bold; margin-top: 10px; margin-bottom: 4px; color: #333; }
+        .modal-content input[type="text"], 
+        .modal-content input[type="password"], 
+        .modal-content select { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-content button[type="submit"] { width: 100%; padding: 10px; background: #0a50a0; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 15px; font-weight: bold; }
         .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 20px; }
         .error-msg { color: red; font-size: 13px; margin-bottom: 10px; display: none; }
+        
+        /* Modal Form Extras */
+        .file-upload-wrapper { border: 1px dashed #bbb; padding: 10px; border-radius: 4px; background: #fafafa; margin-bottom: 10px; }
+        .file-upload-wrapper input[type="file"] { width: 100%; margin-bottom: 8px; }
+        .image-preview-container { text-align: center; margin-top: 5px; }
+        .image-preview-container img { max-height: 80px; max-width: 100%; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -100,10 +109,34 @@
             <h2 id="productModalTitle">Add New Product</h2>
             <form id="productForm">
                 <input type="hidden" id="modalMode" value="ADD" />
-                <input type="text" id="modalCode" placeholder="Item Code (e.g. SMT-001)" required />
+
+                <label for="modalCode">Item Code</label>
+                <input type="text" id="modalCode" placeholder="e.g. SMT-001" required />
+
+                <label for="modalName">Item Name</label>
                 <input type="text" id="modalName" placeholder="Item Name" required />
-                <input type="text" id="modalCategory" placeholder="Category" required />
-                <input type="text" id="modalImage" placeholder="Image URL (e.g. images/SMT-001.png)" required />
+
+                <!-- Category Selection List Box & Custom Option -->
+                <label for="modalCategorySelect">Category</label>
+                <select id="modalCategorySelect" onchange="toggleNewCategoryInput(this)">
+                    <!-- Populated dynamically via JS -->
+                </select>
+                <input type="text" id="modalNewCategory" placeholder="Enter new category name" style="display: none;" />
+
+                <!-- Image Browse & Direct URL Control -->
+                <label>Product Image</label>
+                <div class="file-upload-wrapper">
+                    <label style="font-weight: normal; margin-top:0;">Browse Image File:</label>
+                    <input type="file" id="modalImageFile" accept="image/*" onchange="handleImageFileSelect(event)" />
+                    
+                    <label style="font-weight: normal;">Or Image URL / Path:</label>
+                    <input type="text" id="modalImage" placeholder="images/SMT-001.png or URL" oninput="updateImagePreview(this.value)" required />
+
+                    <div class="image-preview-container">
+                        <img id="modalImagePreview" src="images/placeholder.png" alt="Preview" onerror="this.onerror=null; this.src='images/placeholder.png';" />
+                    </div>
+                </div>
+
                 <button type="submit">Save Product</button>
             </form>
         </div>

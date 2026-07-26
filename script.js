@@ -952,7 +952,7 @@ async function addCategory(categoryName) {
             return false;
         }
         alert('Category added successfully!');
-        await loadCatalogData();
+        await loadCatalogData(); // Refreshes products and populates dropdowns
         return true;
     } catch (err) {
         alert('Failed to add category: ' + err.message);
@@ -960,12 +960,12 @@ async function addCategory(categoryName) {
     }
 }
 
-async function updateCategory(categoryId, newCategoryName) {
+async function updateCategory(oldCategoryName, newCategoryName) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/categories`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: categoryId, name: newCategoryName })
+            body: JSON.stringify({ oldName: oldCategoryName, name: newCategoryName })
         });
         
         const result = await response.json();
@@ -974,7 +974,7 @@ async function updateCategory(categoryId, newCategoryName) {
             return false;
         }
         alert('Category updated successfully!');
-        await loadCatalogData();
+        await loadCatalogData(); // Refreshes products and populates dropdowns
         return true;
     } catch (err) {
         alert('Failed to update category: ' + err.message);
@@ -982,15 +982,15 @@ async function updateCategory(categoryId, newCategoryName) {
     }
 }
 
-async function deleteCategory(categoryId) {
+async function deleteCategory(categoryName) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete categories.");
-        return;
+        return false;
     }
 
-    if (confirm("Are you sure you want to delete this category?")) {
+    if (confirm(`Are you sure you want to delete category "${categoryName}"?`)) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/categories?id=${encodeURIComponent(categoryId)}`, {
+            const response = await fetch(`${API_BASE_URL}/api/categories?name=${encodeURIComponent(categoryName)}`, {
                 method: 'DELETE'
             });
             
@@ -998,13 +998,16 @@ async function deleteCategory(categoryId) {
             
             if (!response.ok) {
                 alert(result.error || 'Failed to delete category'); 
-                return;
+                return false;
             }
             
             alert('Category deleted successfully!');
-            await loadCatalogData();
+            await loadCatalogData(); // Refreshes products and populates dropdowns
+            return true;
         } catch (err) {
             alert('Failed to delete category: ' + err.message);
+            return false;
         }
     }
+    return false;
 }

@@ -789,23 +789,18 @@ function openAddModal() {
     if (modal) modal.style.display = "block";
 }
 
-function openEditModal(code) {
+async function openEditModal(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can edit products.");
         return;
     }
 
-    populateCategories();
-    const categorySelect = document.getElementById("modalCategorySelect");
-    const productCategory = product.category || product["Category"] || "";
-    
-    if (categorySelect) {
-        // Check if category exists in dropdown, otherwise handle or default
-        categorySelect.value = productCategory;
-    }
-    
+    // 1. Find the product first so we have its data ready
     const product = normalizedProducts.find(p => p.code === code);
     if (!product) return;
+
+    // 2. Await category population so options exist in the DOM before setting values
+    await populateCategories();
 
     document.getElementById("productModalTitle").innerText = "Edit Product";
     document.getElementById("modalMode").value = "EDIT";

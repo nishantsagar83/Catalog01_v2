@@ -10,13 +10,10 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
-}
-
-{
+  ],
   "r2_buckets": [
     {
-      "binding": "MY_BUCKET",
+      "binding": "IMAGES_BUCKET",
       "bucket_name": "catalog-images"
     }
   ]

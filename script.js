@@ -843,7 +843,7 @@ function closeProductModal() {
 }
 
 // --- PRODUCT FORM SUBMIT (ADD / EDIT) ---
-async function handleProductFormSubmit(event) {
+\async function handleProductFormSubmit(event) {
     if (event) event.preventDefault();
 
     const mode = document.getElementById("modalMode").value;
@@ -858,26 +858,52 @@ async function handleProductFormSubmit(event) {
         category = newCatInput.value.trim();
     }
 
-    const image = document.getElementById("modalImage").value.trim() || "images/placeholder.png";
+    const imageInputVal = document.getElementById("modalImage").value.trim();
 
     if (!code || !name || !category) {
         alert("Please fill in all required fields.");
         return;
     }
 
-    const payload = {
-        code: code,
-        name: name,
-        category: category,
-        image: image
-    };
+    const cleanCode = code.toUpperCase();
+    let finalImageUrl = imageInputVal || `${cleanCode}.png`;
 
     try {
+        // 1. If a new base64 image was loaded via the file picker, upload it to R2 first
+        if (imageInputVal.startsWith("data:image/")) {
+            const uploadResponse = await fetch(`${API_BASE_URL}/api/upload-image`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    itemCode: cleanCode,
+                    imageData: imageInputVal
+                })
+            });
+
+            if (!uploadResponse.ok) {
+                const errData = await uploadResponse.json().catch(() => ({}));
+                throw new Error(errData.error || "Failed to upload image to R2 bucket");
+            }
+
+            const uploadResult = await uploadResponse.json();
+            finalImageUrl = uploadResult.imageUrl;
+        }
+
+        // 2. Prepare payload for product creation or update
+        const payload = {
+            code: cleanCode,
+            name: name,
+            category: category,
+            image: finalImageUrl
+        };
+
         let endpoint = `${API_BASE_URL}/api/products`;
         let method = "POST";
 
         if (mode === "EDIT") {
-            endpoint = `${API_BASE_URL}/api/products/${encodeURIComponent(code)}`;
+            endpoint = `${API_BASE_URL}/api/products/${encodeURIComponent(cleanCode)}`;
             method = "PUT";
         }
 
@@ -904,7 +930,6 @@ async function handleProductFormSubmit(event) {
         alert(`Error: ${error.message}`);
     }
 }
-
 async function handleDeleteProduct(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete products.");

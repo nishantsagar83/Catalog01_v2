@@ -1,16 +1,16 @@
 console.log("JavaScript is successfully linked!");
 
 // --- CONFIGURATION ---
-// Replace YOUR-SUBDOMAIN with your actual Cloudflare Workers subdomain
 const API_BASE_URL = "https://smt-products-api.smtdxb.workers.dev";
+const COMPANY_WHATSAPP_NUMBER = "971542243526"; 
 
-// --- GLOBAL STATE (Declared ONCE at the top) ---
+// --- GLOBAL STATE ---
 let rawExcelData = [];
 let normalizedProducts = [];
-let orderBasket = {}; // Stores item codes and quantities
+let orderBasket = {}; // Stores item codes and quantities: { "CODE": qty }
 let currentUser = null;
 
-// Default fallback users so local testing works even if fetch('users.json') is blocked
+// Fallback users for local testing
 let systemUsers = [
     { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" },
     { id: "USR-102", name: "Jane Smith", role: "Manager", password: "adminpassword" }
@@ -25,20 +25,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
         if (modal) modal.style.display = "none";
-    
+        
         const userName = currentUser["User Name"] || currentUser.name || currentUser.username;
         const userId = currentUser["User Id"] || currentUser.id || currentUser.user_id;
-    
+        
         const userDisplay = document.getElementById("loggedInUserDisplay");
         if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
-    
+        
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
     } else {
         if (modal) modal.style.display = "block";
     }
 
-    // 2. Fetch authenticated users live from D1 Database
+    // 2. Fetch authenticated users live from Cloudflare D1
     try {
         const response = await fetch(`${API_BASE_URL}/api/users`);
         if (response.ok) {
@@ -58,21 +58,23 @@ document.addEventListener("DOMContentLoaded", async function () {
         loginForm.addEventListener("submit", handleLogin);
     }
 
-    // 4. Load catalog data from Cloudflare D1 / Worker API
+    // 4. Load catalog data from API
     await loadCatalogData();
 
     // 5. Attach filter & search listeners
     const categoryFilter = document.getElementById("categoryFilter");
     const searchInput = document.getElementById("searchInput");
 
-    if (categoryFilter) {
-        categoryFilter.addEventListener("change", renderCatalog);
-    }
-    if (searchInput) {
-        searchInput.addEventListener("input", renderCatalog);
+    if (categoryFilter) categoryFilter.addEventListener("change", renderCatalog);
+    if (searchInput) searchInput.addEventListener("input", renderCatalog);
+
+    // 6. Attach Product Add/Edit Form submission handler
+    const productForm = document.getElementById("productForm");
+    if (productForm) {
+        productForm.addEventListener("submit", handleProductFormSubmit);
     }
 
-    // 6. Disable Right-Click and Drag-and-Drop on images
+    // 7. Disable Right-Click and Drag-and-Drop on images
     document.addEventListener("contextmenu", function (e) {
         if (e.target.tagName === "IMG") e.preventDefault();
     }, false);
@@ -106,7 +108,7 @@ async function loadCatalogData() {
                 syncQuantities();
             }
         } catch (fallbackError) {
-            console.error('Critical: Failed to load fallback JSON data as well.', fallbackError);
+            console.error('Critical: Failed to load fallback JSON data.', fallbackError);
         }
     }
 }
@@ -131,19 +133,16 @@ function populateCategories() {
     const filterSelect = document.getElementById('categoryFilter');
     if (!filterSelect) return;
 
-    const categoriesMap = {};
-    normalizedProducts.forEach(item => {
-        if (item.category && item.category.trim() !== "") {
-            categoriesMap[item.category] = true;
-        }
-    });
+    const categoriesSet = new Set(
+        normalizedProducts
+            .map(p => p.category)
+            .filter(cat => cat && cat.trim() !== '')
+    );
 
     let html = '<option value="all">All Categories</option>';
-    for (let cat in categoriesMap) {
-        if (categoriesMap.hasOwnProperty(cat)) {
-            html += `<option value="${cat}">${cat}</option>`;
-        }
-    }
+    Array.from(categoriesSet).sort().forEach(cat => {
+        html += `<option value="${cat}">${cat}</option>`;
+    });
     filterSelect.innerHTML = html;
 }
 
@@ -156,8 +155,6 @@ function renderCatalog() {
 
     const selectedCategory = categoryElem ? categoryElem.value : 'all';
     const searchTerm = searchElem ? searchElem.value.toLowerCase().trim() : '';
-
-    // Check if a user is currently logged in
     const isLoggedIn = currentUser !== null;
 
     let htmlString = '';
@@ -196,8 +193,8 @@ function renderCatalog() {
 
                         ${isLoggedIn ? `
                             <div class="admin-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                                <button class="btn-edit" onclick="openEditModal('${item.code}')" style="background:#0a50a0; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; flex:1;">Edit</button>
-                                <button class="btn-delete" onclick="handleDeleteProduct('${item.code}')" style="background:#d9534f; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; flex:1;">Delete</button>
+                                <button type="button" class="btn-edit" onclick="openEditModal('${item.code}')" style="background:#0a50a0; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; flex:1;">Edit</button>
+                                <button type="button" class="btn-delete" onclick="handleDeleteProduct('${item.code}')" style="background:#d9534f; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; flex:1;">Delete</button>
                             </div>
                         ` : ''}
                     </div>
@@ -209,7 +206,6 @@ function renderCatalog() {
     grid.innerHTML = htmlString || '<p class="no-results">No products found.</p>';
     updateOrderBar();
 }
-
 
 // --- BASKET & QUANTITY CONTROLS ---
 function adjustQty(itemCode, delta) {
@@ -260,9 +256,7 @@ function syncQuantities() {
         const card = document.querySelector(`[data-code="${code}"]`);
         if (card) {
             const qtyInput = card.querySelector('.qty-input');
-            if (qtyInput) {
-                qtyInput.value = orderBasket[code];
-            }
+            if (qtyInput) qtyInput.value = orderBasket[code];
         }
     }
 }
@@ -270,16 +264,65 @@ function syncQuantities() {
 function clearBasket() {
     orderBasket = {};
     const qtyInputs = document.querySelectorAll('.qty-input');
-    qtyInputs.forEach(input => {
-        input.value = 0;
-    });
+    qtyInputs.forEach(input => { input.value = 0; });
     updateOrderBar();
+}
+
+// --- AUTHENTICATION & SESSION ---
+function handleLogin(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const usernameInput = document.getElementById("usernameInput").value.trim().toLowerCase();
+    const passwordInput = document.getElementById("passwordInput").value.trim();
+    const loginError = document.getElementById("loginError");
+
+    if (!systemUsers || systemUsers.length === 0) {
+        if (loginError) {
+            loginError.innerText = "System users still loading, please try again.";
+            loginError.style.display = "block";
+        }
+        return false;
+    }
+
+    const matchedUser = systemUsers.find(u => {
+        const dbName = String(u.username || u.name || u["User Name"] || u.user_name || u.id || "").trim().toLowerCase();
+        const dbPass = String(u.password || u["Password"] || u.pass || "").trim();
+        return dbName === usernameInput && dbPass === passwordInput;
+    });
+
+    if (matchedUser) {
+        sessionStorage.setItem("loggedInUser", JSON.stringify(matchedUser));
+        currentUser = matchedUser;
+
+        const modal = document.getElementById("loginModal");
+        if (modal) modal.style.display = "none";
+
+        const userName = matchedUser["User Name"] || matchedUser.name || matchedUser.username;
+        const userId = matchedUser["User Id"] || matchedUser.id || matchedUser.user_id || 'User';
+
+        const userDisplay = document.getElementById("loggedInUserDisplay");
+        if (userDisplay) userDisplay.innerText = `${userName} (${userId})`;
+
+        const userInfo = document.getElementById("userInfo");
+        if (userInfo) userInfo.style.display = "inline-flex";
+
+        renderCatalog(); // Re-render to show administrative buttons
+    } else {
+        if (loginError) {
+            loginError.innerText = "Invalid Username or Password";
+            loginError.style.display = "block";
+        }
+    }
+
+    return false;
 }
 
 function handleLogout() {
     currentUser = null;
     sessionStorage.removeItem("loggedInUser");
-    localStorage.removeItem("loggedInUser");
 
     const userInfo = document.getElementById("userInfo");
     if (userInfo) userInfo.style.display = "none";
@@ -293,64 +336,7 @@ function handleLogout() {
     const modal = document.getElementById("loginModal");
     if (modal) modal.style.display = "block";
 
-    console.log("User logged out successfully.");
-}
-
-// --- LOGIN AUTHENTICATION ---
-function handleLogin(event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-
-    const usernameInput = document.getElementById("usernameInput").value.trim().toLowerCase();
-    const passwordInput = document.getElementById("passwordInput").value.trim();
-    const loginError = document.getElementById("loginError");
-
-    if (!systemUsers || systemUsers.length === 0) {
-        console.warn("systemUsers is empty!");
-        if (loginError) {
-            loginError.innerText = "System users still loading, please try again.";
-            loginError.style.display = "block";
-        }
-        return false;
-    }
-
-    const matchedUser = systemUsers.find(u => {
-        // Robust property matching across standard SQL names and Excel formats
-        const dbName = String(u.username || u.name || u["User Name"] || u.user_name || u.id || "").trim().toLowerCase();
-        const dbPass = String(u.password || u["Password"] || u.pass || "").trim();
-
-        return dbName === usernameInput && dbPass === passwordInput;
-    });
-
-    if (matchedUser) {
-        sessionStorage.setItem("loggedInUser", JSON.stringify(matchedUser));
-        console.log("Login successful!", matchedUser);
-        currentUser = matchedUser;
-
-        const modal = document.getElementById("loginModal");
-        if (modal) modal.style.display = "none";
-
-        const userName = matchedUser["User Name"] || matchedUser.name || matchedUser.username;
-        const userId = matchedUser["User Id"] || matchedUser.id || matchedUser.user_id || 'User';
-
-        const userDisplay = document.getElementById("loggedInUserDisplay");
-        if (userDisplay) {
-            userDisplay.innerText = `${userName} (${userId})`;
-        }
-
-        const userInfo = document.getElementById("userInfo");
-        if (userInfo) userInfo.style.display = "inline-flex";
-
-    } else {
-        if (loginError) {
-            loginError.innerText = "Invalid Username or Password";
-            loginError.style.display = "block";
-        }
-    }
-
-    return false;
+    renderCatalog();
 }
 
 // --- PDF & WHATSAPP GENERATION ---
@@ -363,8 +349,6 @@ function loadImage(url) {
         img.src = url;
     });
 }
-
-const COMPANY_WHATSAPP_NUMBER = "971542243526"; 
 
 async function generatePDF() {
     if (!currentUser) {
@@ -587,49 +571,15 @@ function sendOrderToWhatsApp(order) {
     window.open(whatsappUrl, "_blank");
 }
 
-// --- CRUD API HELPER FUNCTIONS FOR WORKER ---
-async function createProductAPI(productData) {
-    const res = await fetch(`${API_BASE_URL}/api/products`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            "Item Code": productData.code,
-            "Item Name": productData.name,
-            "Category": productData.category,
-            "Product Image": productData.image
-        })
-    });
-    return await res.json();
-}
-
-async function updateProductAPI(productData) {
-    const res = await fetch(`${API_BASE_URL}/api/products`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            "Item Code": productData.code,
-            "Item Name": productData.name,
-            "Category": productData.category,
-            "Product Image": productData.image
-        })
-    });
-    return await res.json();
-}
-
-async function deleteProductAPI(productCode) {
-    const res = await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(productCode)}`, {
-        method: "DELETE"
-    });
-    return await res.json();
-}
-
-
-// --- PRODUCT MODAL CONTROLS ---
+// --- CRUD API & MODAL CONTROLS ---
 function openAddModal() {
     document.getElementById("productModalTitle").innerText = "Add New Product";
     document.getElementById("modalMode").value = "ADD";
-    document.getElementById("modalCode").value = "";
-    document.getElementById("modalCode").disabled = false;
+    
+    const codeInput = document.getElementById("modalCode");
+    codeInput.value = "";
+    codeInput.disabled = false;
+    
     document.getElementById("modalName").value = "";
     document.getElementById("modalCategory").value = "";
     document.getElementById("modalImage").value = "";
@@ -642,8 +592,11 @@ function openEditModal(code) {
 
     document.getElementById("productModalTitle").innerText = "Edit Product";
     document.getElementById("modalMode").value = "EDIT";
-    document.getElementById("modalCode").value = product.code;
-    document.getElementById("modalCode").disabled = true; // Code should not be modified on update
+    
+    const codeInput = document.getElementById("modalCode");
+    codeInput.value = product.code;
+    codeInput.disabled = true; // Code primary key is read-only during edit
+    
     document.getElementById("modalName").value = product.name;
     document.getElementById("modalCategory").value = product.category;
     document.getElementById("modalImage").value = product.image;
@@ -654,119 +607,56 @@ function closeProductModal() {
     document.getElementById("productModal").style.display = "none";
 }
 
-// Handle Form Submission for Create & Update
-document.addEventListener("DOMContentLoaded", function () {
-    const productForm = document.getElementById("productForm");
-    if (productForm) {
-        productForm.addEventListener("submit", async function (e) {
-            e.preventDefault();
-            const mode = document.getElementById("modalMode").value;
-            const productData = {
-                code: document.getElementById("modalCode").value.trim(),
-                name: document.getElementById("modalName").value.trim(),
-                category: document.getElementById("modalCategory").value.trim(),
-                image: document.getElementById("modalImage").value.trim()
-            };
+async function handleProductFormSubmit(e) {
+    e.preventDefault();
+    const mode = document.getElementById("modalMode").value;
+    const productData = {
+        code: document.getElementById("modalCode").value.trim(),
+        name: document.getElementById("modalName").value.trim(),
+        category: document.getElementById("modalCategory").value.trim(),
+        image: document.getElementById("modalImage").value.trim()
+    };
 
-            if (mode === "ADD") {
-                await createProductAPI(productData);
-            } else {
-                await updateProductAPI(productData);
-            }
-
-            closeProductModal();
-            await loadCatalogData(); // Refresh list from D1
-        });
+    try {
+        if (mode === "ADD") {
+            await fetch(`${API_BASE_URL}/api/products`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    "Item Code": productData.code,
+                    "Item Name": productData.name,
+                    "Category": productData.category,
+                    "Product Image": productData.image
+                })
+            });
+        } else {
+            await fetch(`${API_BASE_URL}/api/products`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    "Item Code": productData.code,
+                    "Item Name": productData.name,
+                    "Category": productData.category,
+                    "Product Image": productData.image
+                })
+            });
+        }
+        closeProductModal();
+        await loadCatalogData(); // Sync UI with D1 database
+    } catch (err) {
+        alert("Failed to save product: " + err.message);
     }
-});
+}
 
-// Handle Delete Action
 async function handleDeleteProduct(code) {
     if (confirm(`Are you sure you want to delete item "${code}"?`)) {
-        await deleteProductAPI(code);
-        await loadCatalogData(); // Refresh list from D1
+        try {
+            await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(code)}`, {
+                method: "DELETE"
+            });
+            await loadCatalogData();
+        } catch (err) {
+            alert("Failed to delete product: " + err.message);
+        }
     }
-}
-
-
-// 1. Populate Category Dropdown from existing loaded products
-function populateCategoriesDropdown() {
-  const categorySelect = document.getElementById("productCategory");
-  
-  // Extract unique categories from global products array
-  const categories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
-  
-  categorySelect.innerHTML = '<option value="">Select Category...</option>';
-  categories.forEach(cat => {
-    const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    categorySelect.appendChild(opt);
-  });
-}
-
-// 2. Helper to convert uploaded PNG File to Base64
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
-// 3. Handle Form Submit (Add / Edit Product)
-async function handleSaveProduct(event) {
-  event.preventDefault();
-
-  const code = document.getElementById("productCode").value.trim();
-  const name = document.getElementById("productName").value.trim();
-  const category = document.getElementById("productCategory").value;
-  const imageInput = document.getElementById("productImageFile");
-
-  let imageUrl = currentEditingProduct ? currentEditingProduct.image : "";
-
-  // If a new PNG file was selected, upload it
-  if (imageInput.files && imageInput.files[0]) {
-    const file = imageInput.files[0];
-    if (file.type !== "image/png") {
-      alert("Please select a valid PNG image file.");
-      return;
-    }
-
-    const base64Data = await fileToBase64(file);
-
-    // Upload image to Worker
-    const uploadRes = await fetch("/api/upload-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        itemCode: code,
-        imageData: base64Data
-      })
-    });
-
-    const uploadData = await uploadRes.json();
-    if (!uploadRes.ok) {
-      alert("Image upload failed: " + uploadData.error);
-      return;
-    }
-    imageUrl = uploadData.imageUrl;
-  }
-
-  // Save product data to D1 via Worker
-  const method = isEditing ? "PUT" : "POST";
-  const response = await fetch("/api/products", {
-    method: method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name, category, image: imageUrl })
-  });
-
-  if (response.ok) {
-    alert("Product saved successfully!");
-    loadProducts(); // Reload product list
-  } else {
-    const err = await response.json();
-    alert("Error: " + err.error);
-  }
 }

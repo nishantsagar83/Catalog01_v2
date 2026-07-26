@@ -17,7 +17,7 @@
         .controls { display: flex; gap: 10px; padding: 20px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap; }
         .controls input, .controls select, .controls button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
         .controls input, .controls select { flex: 1; min-width: 200px; }
-        .btn-add { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; display: none; }
 
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 0 20px; max-width: 1200px; margin: 0 auto; }
         .product-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
@@ -32,6 +32,9 @@
         .qty-controls { display: flex; align-items: center; gap: 4px; }
         .qty-btn { width: 26px; height: 26px; border: 1px solid #ccc; background: #eee; cursor: pointer; border-radius: 4px; }
         .qty-input { width: 40px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px; }
+
+        /* Pagination Styles */
+        #paginationControls { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 25px 0 40px 0; flex-wrap: wrap; }
 
         /* Floating Order Bar */
         .order-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 2px solid #0a50a0; padding: 15px 20px; display: none; justify-content: space-between; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
@@ -76,7 +79,11 @@
         <button class="btn-add" onclick="openAddModal()">+ Add Product</button>
     </div>
 
+    <!-- Product Grid Container -->
     <div id="productGrid" class="product-grid"></div>
+
+    <!-- Pagination Navigation Controls Container -->
+    <div id="paginationControls"></div>
 
     <!-- Floating Bottom Order Bar -->
     <div id="orderBar" class="order-bar">
@@ -142,6 +149,7 @@
         </div>
     </div>
 
+    <!-- Main JavaScript File -->
     <script src="script.js"></script>
 </body>
 </html>

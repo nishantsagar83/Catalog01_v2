@@ -843,7 +843,7 @@ function closeProductModal() {
 }
 
 // --- PRODUCT FORM SUBMIT (ADD / EDIT) ---
-\async function handleProductFormSubmit(event) {
+async function handleProductFormSubmit(event) {
     if (event) event.preventDefault();
 
     const mode = document.getElementById("modalMode").value;

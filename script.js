@@ -11,6 +11,10 @@ let normalizedProducts = [];
 let orderBasket = {}; // Stores item codes and quantities: { "CODE": qty }
 let currentUser = null;
 
+// --- PAGINATION STATE ---
+let currentPage = 1;
+const itemsPerPage = 24; // Adjust number of items displayed per page here
+
 // Fallback users for local testing
 let systemUsers = [
     { id: "USR-101", name: "John Doe", role: "Sales", password: "password123" },
@@ -36,8 +40,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
-        // Load data and render
-        await loadCatalogData(); // loadCatalogData calls renderCatalog() internally
+        await loadCatalogData();
         
     } else {
         if (modal) modal.style.display = "block";
@@ -66,12 +69,22 @@ document.addEventListener("DOMContentLoaded", async function () {
     // 4. Load catalog data from API
     await loadCatalogData();
 
-    // 5. Attach filter & search listeners
+    // 5. Attach filter & search listeners (resets pagination to Page 1)
     const categoryFilter = document.getElementById("categoryFilter");
     const searchInput = document.getElementById("searchInput");
 
-    if (categoryFilter) categoryFilter.addEventListener("change", renderCatalog);
-    if (searchInput) searchInput.addEventListener("input", renderCatalog);
+    if (categoryFilter) {
+        categoryFilter.addEventListener("change", () => {
+            currentPage = 1;
+            renderCatalog();
+        });
+    }
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            currentPage = 1;
+            renderCatalog();
+        });
+    }
 
     // 6. Attach Product Add/Edit Form submission handler
     const productForm = document.getElementById("productForm");
@@ -127,18 +140,11 @@ function buildNormalizedArray(data) {
 
         let imageUrl = rawImg;
 
-        // Check if rawImg is already a full http/https URL
         if (!rawImg.startsWith("http://") && !rawImg.startsWith("https://")) {
-            // Strip any legacy relative path prefix like "./images/" or "images/"
             const cleanFileName = rawImg.replace(/^(\.\/)?images\//, "");
-            
-            // Encode spaces and special characters safely for the URL path
             const encodedFileName = encodeURIComponent(cleanFileName);
-            
-            // Append timestamp query to break browser image cache when updated
             imageUrl = `${WORKER_IMAGE_BASE}/${encodedFileName}?v=${Date.now()}`;
         } else {
-            // If it's already a full URL, ensure spaces inside the URL path are encoded
             imageUrl = rawImg.replace(/ /g, "%20");
         }
 
@@ -164,7 +170,6 @@ function populateCategories() {
 
     const sortedCategories = Array.from(categoriesSet).sort();
 
-    // 1. Filter dropdown on main page
     if (filterSelect) {
         let html = '<option value="all">All Categories</option>';
         sortedCategories.forEach(cat => {
@@ -173,7 +178,6 @@ function populateCategories() {
         filterSelect.innerHTML = html;
     }
 
-    // 2. Category selection list box inside the Modal
     if (modalCatSelect) {
         let modalHtml = '<option value="" disabled selected>-- Select Category --</option>';
         sortedCategories.forEach(cat => {
@@ -191,7 +195,7 @@ function isManager() {
     return role.toString().trim().toLowerCase() === "manager";
 }
 
-// --- RENDER CATALOG WITH ROLE-BASED VISIBILITY ---
+// --- RENDER CATALOG WITH PAGINATION ---
 function renderCatalog() {
     const grid = document.getElementById('productGrid');
     if (!grid) return;
@@ -202,18 +206,15 @@ function renderCatalog() {
     const selectedCategory = categoryElem ? categoryElem.value : 'all';
     const searchTerm = searchElem ? searchElem.value.toLowerCase().trim() : '';
 
-    // Check if logged-in user is a Manager
     const userIsManager = isManager();
 
-    // Toggle main "+ Add Product" button visibility
     const addBtn = document.querySelector('.btn-add');
     if (addBtn) {
         addBtn.style.display = userIsManager ? 'inline-block' : 'none';
     }
 
-    let htmlString = '';
-
-    normalizedProducts.forEach(item => {
+    // 1. Filter products based on search and category
+    const filteredProducts = normalizedProducts.filter(item => {
         const itemNameLower = (item.name || '').toLowerCase();
         const itemCodeLower = (item.code || '').toLowerCase();
         const itemCategoryLower = (item.category || '').toLowerCase();
@@ -225,13 +226,32 @@ function renderCatalog() {
             itemCategoryLower.includes(searchTerm)
         );
 
-        if (matchesCategory && matchesSearch) {
+        return matchesCategory && matchesSearch;
+    });
+
+    // 2. Calculate Page Slices
+    const totalItems = filteredProducts.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+    // Boundary check for current page
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedItems = filteredProducts.slice(startIndex, endIndex);
+
+    // 3. Render Product Cards for the Active Page
+    let htmlString = '';
+
+    if (paginatedItems.length > 0) {
+        paginatedItems.forEach(item => {
             const qty = orderBasket[item.code] !== undefined ? orderBasket[item.code] : (item.initialQty || 0);
 
             htmlString += `
                 <div class="product-card" data-code="${item.code}">
                     <div class="image-container">
-                        <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null; this.src='images/placeholder.png';" />
+                        <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null; this.src='images/placeholder.png';" loading="lazy" />
                     </div>
                     <div class="card-content">
                         <span class="category-badge">${item.category}</span>
@@ -254,11 +274,71 @@ function renderCatalog() {
                     </div>
                 </div>
             `;
-        }
-    });
+        });
+    } else {
+        htmlString = '<p class="no-results">No products found.</p>';
+    }
 
-    grid.innerHTML = htmlString || '<p class="no-results">No products found.</p>';
+    grid.innerHTML = htmlString;
+    renderPaginationControls(totalPages, totalItems);
     updateOrderBar();
+}
+
+// --- PAGINATION CONTROLS RENDERER ---
+function renderPaginationControls(totalPages, totalItems) {
+    let container = document.getElementById('paginationControls');
+    
+    // Dynamically create pagination container if not already in index.html
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'paginationControls';
+        container.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 8px; margin: 25px 0 40px 0; flex-wrap: wrap;';
+        const gridContainer = document.getElementById('productGrid');
+        if (gridContainer && gridContainer.parentNode) {
+            gridContainer.parentNode.insertBefore(container, gridContainer.nextSibling);
+        }
+    }
+
+    if (totalItems === 0 || totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let navHtml = `
+        <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="padding: 6px 12px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #f8f9fa;">&laquo; Prev</button>
+    `;
+
+    // Render numbered page buttons
+    for (let i = 1; i <= totalPages; i++) {
+        // Show first page, last page, current page, and adjacent pages
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            const activeStyle = (i === currentPage) 
+                ? 'background: #0a50a0; color: #fff; font-weight: bold; border-color: #0a50a0;' 
+                : 'background: #fff; color: #333; border: 1px solid #ccc;';
+            navHtml += `<button onclick="goToPage(${i})" style="padding: 6px 12px; cursor: pointer; border-radius: 4px; ${activeStyle}">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            navHtml += `<span style="padding: 0 4px;">...</span>`;
+        }
+    }
+
+    navHtml += `
+        <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} style="padding: 6px 12px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #f8f9fa;">Next &raquo;</button>
+        <span style="margin-left: 10px; font-size: 14px; color: #555;">Page ${currentPage} of ${totalPages} (${totalItems} items)</span>
+    `;
+
+    container.innerHTML = navHtml;
+}
+
+function changePage(newPage) {
+    currentPage = newPage;
+    renderCatalog();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToPage(page) {
+    currentPage = page;
+    renderCatalog();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // --- BASKET & QUANTITY CONTROLS ---
@@ -638,7 +718,6 @@ function toggleNewCategoryInput(selectElem) {
     }
 }
 
-// Handles selecting a local image file and converting it to Data URL for instant preview/saving
 function handleImageFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -652,7 +731,6 @@ function handleImageFileSelect(event) {
     reader.readAsDataURL(file);
 }
 
-// Updates the image preview thumbnail in the modal
 function updateImagePreview(url) {
     const previewImg = document.getElementById("modalImagePreview");
     if (previewImg) {
@@ -781,16 +859,13 @@ async function handleProductFormSubmit(e) {
         return;
     }
 
-    // 1. Force Item Code to UPPERCASE and TRIM spaces (e.g. "0100CC")
     const rawCode = document.getElementById("modalCode").value.trim();
     const code = rawCode.toUpperCase(); 
     const name = document.getElementById("modalName").value.trim();
     let imageValue = document.getElementById("modalImage").value.trim();
 
-    // Standardized R2 key format: "0100CC.png"
     const standardizedFilename = `${code}.png`;
 
-    // 2. Upload Base64 image data to R2 Bucket if a new file was chosen
     if (imageValue.startsWith("data:image/")) {
         try {
             const uploadRes = await fetch(`${WORKER_IMAGE_BASE}/api/upload-image`, {
@@ -807,7 +882,6 @@ async function handleProductFormSubmit(e) {
         }
     }
 
-    // 3. Save STRICTLY the filename string (e.g., "0100CC.png") in D1 Database
     const productData = {
         code: code,
         name: name,
@@ -834,7 +908,7 @@ async function handleProductFormSubmit(e) {
         }
 
         closeProductModal();
-        await loadCatalogData(); // Re-fetch updated records from D1 and refresh UI
+        await loadCatalogData();
     } catch (err) {
         alert("Failed to save product: " + err.message);
     }

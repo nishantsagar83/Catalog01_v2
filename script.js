@@ -2,6 +2,7 @@ console.log("JavaScript is successfully linked!");
 
 // --- CONFIGURATION ---
 const API_BASE_URL = "https://smt-products-api.smtdxb.workers.dev";
+const WORKER_IMAGE_BASE = "https://catalog-images.smtdxb.workers.dev";
 const COMPANY_WHATSAPP_NUMBER = "971542243526"; 
 
 // --- GLOBAL STATE ---
@@ -122,12 +123,21 @@ function buildNormalizedArray(data) {
 
     normalizedProducts = data.map(item => {
         const code = item['Item Code'] || item.code || item.id || '';
-        const imagePath = item['Product Image'] || item.image || `images/${code}.png`;
+        let rawImg = item['Product Image'] || item.image || `${code}.png`;
+
+        // Normalize URL to target the Cloudflare Worker R2 route
+        let imageUrl = rawImg;
+        if (!rawImg.startsWith("http://") && !rawImg.startsWith("https://")) {
+            // Remove redundant local folder prefixes if existing (e.g. "images/")
+            const cleanFileName = rawImg.replace(/^images\//, "");
+            imageUrl = `${WORKER_IMAGE_BASE}/${cleanFileName}`;
+        }
+
         return {
             code: code,
             name: item['Item Name'] || item.name || item.title || 'Unnamed Item',
             category: item['Category'] || item.category || 'Uncategorized',
-            image: imagePath, 
+            image: imageUrl, 
             initialQty: item.initialQty || 0
         };
     }).filter(item => item.code !== '');
@@ -171,7 +181,6 @@ function isManager() {
     const role = currentUser["Role"] || currentUser.role || "";
     return role.toString().trim().toLowerCase() === "manager";
 }
-
 
 // --- RENDER CATALOG WITH ROLE-BASED VISIBILITY ---
 function renderCatalog() {
@@ -242,7 +251,6 @@ function renderCatalog() {
     grid.innerHTML = htmlString || '<p class="no-results">No products found.</p>';
     updateOrderBar();
 }
-
 
 // --- BASKET & QUANTITY CONTROLS ---
 function adjustQty(itemCode, delta) {
@@ -343,7 +351,6 @@ function handleLogin(event) {
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
-        // Re-render the catalog immediately so roles and button visibility update
         renderCatalog();
     } else {
         if (loginError) {
@@ -354,7 +361,6 @@ function handleLogin(event) {
 
     return false;
 }
-
 
 function handleLogout() {
     currentUser = null;
@@ -645,7 +651,6 @@ function updateImagePreview(url) {
     }
 }
 
-
 // --- MODAL HANDLERS WITH MANAGER GUARDS ---
 
 function openAddModal() {
@@ -654,7 +659,7 @@ function openAddModal() {
         return;
     }
 
-    populateCategories(); // Refresh modal dropdown options
+    populateCategories();
     
     document.getElementById("productModalTitle").innerText = "Add New Product";
     document.getElementById("modalMode").value = "ADD";
@@ -696,7 +701,7 @@ function openEditModal(code) {
         return;
     }
 
-    populateCategories(); // Refresh modal dropdown options
+    populateCategories();
     
     const product = normalizedProducts.find(p => p.code === code);
     if (!product) return;
@@ -707,7 +712,7 @@ function openEditModal(code) {
     const codeInput = document.getElementById("modalCode");
     if (codeInput) {
         codeInput.value = product.code;
-        codeInput.disabled = true; // Primary key read-only
+        codeInput.disabled = true;
     }
     
     const nameInput = document.getElementById("modalName");
@@ -749,8 +754,6 @@ function openEditModal(code) {
     if (modal) modal.style.display = "block";
 }
 
-
-
 function closeProductModal() {
     document.getElementById("productModal").style.display = "none";
 }
@@ -769,11 +772,39 @@ async function handleProductFormSubmit(e) {
         return;
     }
 
+    const code = document.getElementById("modalCode").value.trim();
+    const name = document.getElementById("modalName").value.trim();
+    let imageValue = document.getElementById("modalImage").value.trim();
+
+    // If local image base64 provided via browse, upload directly to R2 first
+    if (imageValue.startsWith("data:image/")) {
+        try {
+            const uploadRes = await fetch(`${WORKER_IMAGE_BASE}/api/upload-image`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ itemCode: code, imageData: imageValue })
+            });
+
+            if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                if (uploadData.imageUrl) {
+                    imageValue = uploadData.imageUrl;
+                }
+            } else {
+                console.warn("Failed to upload image binary to R2. Proceeding with filename path.");
+                imageValue = `${code}.png`;
+            }
+        } catch (uploadErr) {
+            console.error("R2 Upload error:", uploadErr);
+            imageValue = `${code}.png`;
+        }
+    }
+
     const productData = {
-        code: document.getElementById("modalCode").value.trim(),
-        name: document.getElementById("modalName").value.trim(),
+        code: code,
+        name: name,
         category: finalCategory,
-        image: document.getElementById("modalImage").value.trim()
+        image: imageValue
     };
 
     try {

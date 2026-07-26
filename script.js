@@ -930,6 +930,8 @@ async function handleProductFormSubmit(event) {
         alert(`Error: ${error.message}`);
     }
 }
+
+
 async function handleDeleteProduct(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete products.");

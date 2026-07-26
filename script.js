@@ -116,7 +116,7 @@ function buildNormalizedArray(data) {
 
     normalizedProducts = data.map(item => {
         const code = item['Item Code'] || item.code || item.id || '';
-        const imagePath = item['Product Image1'] || item.image || `images/${code}.png`;
+        const imagePath = item['Product Image'] || item.image || `images/${code}.png`;
         return {
             code: code,
             name: item['Item Name'] || item.name || item.title || 'Unnamed Item',
@@ -596,7 +596,7 @@ async function createProductAPI(productData) {
             "Item Code": productData.code,
             "Item Name": productData.name,
             "Category": productData.category,
-            "Product Image1": productData.image
+            "Product Image": productData.image
         })
     });
     return await res.json();
@@ -610,7 +610,7 @@ async function updateProductAPI(productData) {
             "Item Code": productData.code,
             "Item Name": productData.name,
             "Category": productData.category,
-            "Product Image1": productData.image
+            "Product Image": productData.image
         })
     });
     return await res.json();

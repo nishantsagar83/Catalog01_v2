@@ -135,7 +135,8 @@ function buildNormalizedArray(data) {
             // Encode spaces and special characters safely for the URL path
             const encodedFileName = encodeURIComponent(cleanFileName);
             
-            imageUrl = `${WORKER_IMAGE_BASE}/${encodedFileName}`;
+            // Append timestamp query to break browser image cache when updated
+            imageUrl = `${WORKER_IMAGE_BASE}/${encodedFileName}?v=${Date.now()}`;
         } else {
             // If it's already a full URL, ensure spaces inside the URL path are encoded
             imageUrl = rawImg.replace(/ /g, "%20");

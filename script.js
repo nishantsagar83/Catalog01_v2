@@ -842,8 +842,11 @@ function openEditModal(code) {
 }
 
 function closeProductModal() {
-    document.getElementById("productModal").style.display = "none";
+    const modal = document.getElementById("productModal");
+    if (modal) modal.style.display = "none";
 }
+
+// --- PRODUCT ADD / EDIT SUBMISSION HANDLER ---
 
 async function handleProductFormSubmit(e) {
     e.preventDefault();
@@ -914,6 +917,8 @@ async function handleProductFormSubmit(e) {
     }
 }
 
+// --- DELETE PRODUCT HANDLER ---
+
 async function handleDeleteProduct(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete products.");
@@ -922,9 +927,15 @@ async function handleDeleteProduct(code) {
 
     if (confirm(`Are you sure you want to delete item "${code}"?`)) {
         try {
-            await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(code)}`, {
+            const response = await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(code)}`, {
                 method: "DELETE"
             });
+
+            if (!response.ok) {
+                throw new Error(`Server returned status ${response.status}`);
+            }
+
+            delete orderBasket[code];
             await loadCatalogData();
         } catch (err) {
             alert("Failed to delete product: " + err.message);

@@ -53,10 +53,22 @@
             <input type="text" id="modalName" required style="width:100%; margin-bottom:10px; padding:8px;" />
 
             <label>Category:</label>
-            <input type="text" id="modalCategory" required style="width:100%; margin-bottom:10px; padding:8px;" />
+            <!-- Category Dropdown / Select -->
+                <div class="form-group">
+                  <label for="productCategory">Category</label>
+                  <select id="productCategory" class="form-control" required>
+                    <option value="">Select Category...</option>
+                  </select>
+                </div>
 
             <label>Image URL / Path:</label>
             <input type="text" id="modalImage" required style="width:100%; margin-bottom:15px; padding:8px;" />
+            <!-- Image Browse Input -->
+            <div class="form-group">
+              <label for="productImageFile">Product Image (PNG only)</label>
+              <input type="file" id="productImageFile" accept="image/png" class="form-control" />
+              <small id="currentImageNotice" class="text-muted"></small>
+            </div>
 
             <div style="display:flex; justify-content:flex-end; gap:10px;">
                 <button type="button" onclick="closeProductModal()" style="padding:8px 16px;">Cancel</button>

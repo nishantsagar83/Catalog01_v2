@@ -585,7 +585,6 @@ function sendOrderToWhatsApp(order) {
 
 // --- MODAL INTERACTION & IMAGE FILE BROWSE CONTROLS ---
 
-// Toggles display of new category input when "__NEW__" is selected from dropdown
 function toggleNewCategoryInput(selectElem) {
     const newCategoryInput = document.getElementById("modalNewCategory");
     if (!newCategoryInput) return;
@@ -623,31 +622,46 @@ function updateImagePreview(url) {
 }
 
 function openAddModal() {
-    populateCategories(); // Ensure modal category list is updated
+    populateCategories(); // Refresh modal dropdown options
+    
     document.getElementById("productModalTitle").innerText = "Add New Product";
     document.getElementById("modalMode").value = "ADD";
     
     const codeInput = document.getElementById("modalCode");
-    codeInput.value = "";
-    codeInput.disabled = false;
+    if (codeInput) {
+        codeInput.value = "";
+        codeInput.disabled = false;
+    }
     
-    document.getElementById("modalName").value = "";
-    document.getElementById("modalCategorySelect").value = "";
+    const nameInput = document.getElementById("modalName");
+    if (nameInput) nameInput.value = "";
+    
+    const catSelect = document.getElementById("modalCategorySelect");
+    if (catSelect) catSelect.selectedIndex = 0; // Safely set to first default option
     
     const newCatInput = document.getElementById("modalNewCategory");
-    newCatInput.value = "";
-    newCatInput.style.display = "none";
-    newCatInput.required = false;
+    if (newCatInput) {
+        newCatInput.value = "";
+        newCatInput.style.display = "none";
+        newCatInput.required = false;
+    }
 
-    document.getElementById("modalImageFile").value = "";
-    document.getElementById("modalImage").value = "";
+    const imgFileInput = document.getElementById("modalImageFile");
+    if (imgFileInput) imgFileInput.value = "";
+
+    const imgInput = document.getElementById("modalImage");
+    if (imgInput) imgInput.value = "";
+
     updateImagePreview("images/placeholder.png");
 
-    document.getElementById("productModal").style.display = "block";
+    const modal = document.getElementById("productModal");
+    if (modal) modal.style.display = "block";
 }
 
+
 function openEditModal(code) {
-    populateCategories(); // Ensure modal category list is updated
+    populateCategories(); // Refresh modal dropdown options
+    
     const product = normalizedProducts.find(p => p.code === code);
     if (!product) return;
 
@@ -655,41 +669,49 @@ function openEditModal(code) {
     document.getElementById("modalMode").value = "EDIT";
     
     const codeInput = document.getElementById("modalCode");
-    codeInput.value = product.code;
-    codeInput.disabled = true; // Primary key read-only
+    if (codeInput) {
+        codeInput.value = product.code;
+        codeInput.disabled = true; // Primary key read-only
+    }
     
-    document.getElementById("modalName").value = product.name;
+    const nameInput = document.getElementById("modalName");
+    if (nameInput) nameInput.value = product.name;
 
-    // Set category dropdown value or trigger new input if category doesn't exist in list
     const selectElem = document.getElementById("modalCategorySelect");
     const newCatInput = document.getElementById("modalNewCategory");
     
-    let optionExists = false;
-    for (let i = 0; i < selectElem.options.length; i++) {
-        if (selectElem.options[i].value === product.category) {
-            optionExists = true;
-            break;
+    if (selectElem && newCatInput) {
+        let optionExists = false;
+        for (let i = 0; i < selectElem.options.length; i++) {
+            if (selectElem.options[i].value === product.category) {
+                optionExists = true;
+                break;
+            }
+        }
+
+        if (optionExists) {
+            selectElem.value = product.category;
+            newCatInput.style.display = "none";
+            newCatInput.required = false;
+        } else {
+            selectElem.value = "__NEW__";
+            newCatInput.value = product.category;
+            newCatInput.style.display = "block";
+            newCatInput.required = true;
         }
     }
 
-    if (optionExists) {
-        selectElem.value = product.category;
-        newCatInput.style.display = "none";
-        newCatInput.required = false;
-    } else {
-        selectElem.value = "__NEW__";
-        newCatInput.value = product.category;
-        newCatInput.style.display = "block";
-        newCatInput.required = true;
-    }
+    const imgFileInput = document.getElementById("modalImageFile");
+    if (imgFileInput) imgFileInput.value = "";
 
-    document.getElementById("modalImageFile").value = "";
-    document.getElementById("modalImage").value = product.image;
+    const imgInput = document.getElementById("modalImage");
+    if (imgInput) imgInput.value = product.image;
+
     updateImagePreview(product.image);
 
-    document.getElementById("productModal").style.display = "block";
+    const modal = document.getElementById("productModal");
+    if (modal) modal.style.display = "block";
 }
-
 function closeProductModal() {
     document.getElementById("productModal").style.display = "none";
 }

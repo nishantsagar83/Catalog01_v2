@@ -905,7 +905,6 @@ async function handleProductFormSubmit(event) {
     }
 }
 
-// --- PRODUCT DELETION ---
 async function handleDeleteProduct(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete products.");
@@ -936,6 +935,7 @@ async function handleDeleteProduct(code) {
         alert(`Error: ${error.message}`);
     }
 }
+
 
 // --- CATEGORY API MANAGEMENT HELPERS ---
 async function addCategory(categoryName) {

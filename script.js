@@ -1,5 +1,3 @@
-console.log("JavaScript is successfully linked!");
-
 // --- CONFIGURATION ---
 const API_BASE_URL = "https://smt-products-api.smtdxb.workers.dev";
 const WORKER_IMAGE_BASE = "https://smt-products-api.smtdxb.workers.dev";
@@ -52,7 +50,6 @@ document.addEventListener("DOMContentLoaded", async function () {
             const fetchedUsers = await response.json();
             if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) {
                 systemUsers = fetchedUsers;
-                console.log("Loaded systemUsers live from D1:", systemUsers);
             }
         }
     } catch (err) {
@@ -109,10 +106,9 @@ async function loadCatalogData() {
 
         rawExcelData = await response.json();
         buildNormalizedArray(rawExcelData);
-        populateCategories();
+        await populateCategories();
         renderCatalog();
         syncQuantities();
-        console.log("Successfully loaded catalog data from Cloudflare D1.");
     } catch (error) {
         console.warn('Failed to load D1 data, falling back to local products.json:', error);
         try {
@@ -120,7 +116,7 @@ async function loadCatalogData() {
             if (fallbackResponse.ok) {
                 rawExcelData = await fallbackResponse.json();
                 buildNormalizedArray(rawExcelData);
-                populateCategories();
+                await populateCategories();
                 renderCatalog();
                 syncQuantities();
             }
@@ -157,7 +153,6 @@ function buildNormalizedArray(data) {
     }).filter(item => item.code !== '');
 }
 
-
 async function populateCategories() {
     const filterSelect = document.getElementById('categoryFilter');
     const modalCatSelect = document.getElementById('modalCategorySelect');
@@ -171,8 +166,6 @@ async function populateCategories() {
             sortedCategories = categoriesData.map(c => c.name).filter(cat => cat && cat.trim() !== '').sort();
         }
     } catch (err) {
-        console.warn("Failed to fetch master categories list, falling back to products:", err);
-        // Fallback to product extraction if API is unreachable
         const categoriesSet = new Set(
             (typeof normalizedProducts !== 'undefined' ? normalizedProducts : [])
                 .map(p => p.category)
@@ -199,8 +192,6 @@ async function populateCategories() {
     }
 }
 
-
-
 // --- ROLE HELPER ---
 function isManager() {
     if (!currentUser) return false;
@@ -226,7 +217,6 @@ function renderCatalog() {
         addBtn.style.display = userIsManager ? 'inline-block' : 'none';
     }
 
-    // 1. Filter products based on search and category
     const filteredProducts = normalizedProducts.filter(item => {
         const itemNameLower = (item.name || '').toLowerCase();
         const itemCodeLower = (item.code || '').toLowerCase();
@@ -242,7 +232,6 @@ function renderCatalog() {
         return matchesCategory && matchesSearch;
     });
 
-    // 2. Calculate Page Slices
     const totalItems = filteredProducts.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
@@ -253,7 +242,6 @@ function renderCatalog() {
     const endIndex = startIndex + itemsPerPage;
     const paginatedItems = filteredProducts.slice(startIndex, endIndex);
 
-    // 3. Render Product Cards for Active Page
     let htmlString = '';
 
     if (paginatedItems.length > 0) {
@@ -854,7 +842,6 @@ function closeProductModal() {
     if (modal) modal.style.display = "none";
 }
 
-
 // --- PRODUCT FORM SUBMIT (ADD / EDIT) ---
 async function handleProductFormSubmit(event) {
     if (event) event.preventDefault();
@@ -918,7 +905,6 @@ async function handleProductFormSubmit(event) {
     }
 }
 
-
 // --- PRODUCT DELETION ---
 async function handleDeleteProduct(code) {
     if (!isManager()) {
@@ -950,8 +936,6 @@ async function handleDeleteProduct(code) {
         alert(`Error: ${error.message}`);
     }
 }
-
-
 
 // --- CATEGORY API MANAGEMENT HELPERS ---
 async function addCategory(categoryName) {

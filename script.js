@@ -34,6 +34,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
+
+        // Load data and render
+        await loadCatalogData(); // loadCatalogData calls renderCatalog() internally
+        
     } else {
         if (modal) modal.style.display = "block";
     }
@@ -339,6 +343,7 @@ function handleLogin(event) {
         const userInfo = document.getElementById("userInfo");
         if (userInfo) userInfo.style.display = "inline-flex";
 
+        // Re-render the catalog immediately so roles and button visibility update
         renderCatalog();
     } else {
         if (loginError) {
@@ -349,6 +354,7 @@ function handleLogin(event) {
 
     return false;
 }
+
 
 function handleLogout() {
     currentUser = null;

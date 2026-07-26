@@ -3,157 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Samrat Catalog</title>
-
-    <!-- Font Awesome 6 Icon Library -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Client-side PDF Generation Engine Bundle (jsPDF) -->
+    <title>SMT Product Catalog</title>
+    <!-- jsPDF Library for Client-side PDF Generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #f4f6f9; padding-bottom: 90px; }
+        
+        header { background-color: #0a50a0; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { display: none; align-items: center; gap: 10px; }
+        .btn-logout { background: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
 
-    <!-- External CSS -->
-    <link rel="stylesheet" href="style.css">
+        .controls { display: flex; gap: 10px; padding: 20px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap; }
+        .controls input, .controls select, .controls button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .controls input, .controls select { flex: 1; min-width: 200px; }
+        .btn-add { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 0 20px; max-width: 1200px; margin: 0 auto; }
+        .product-card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+        .image-container { height: 160px; display: flex; align-items: center; justify-content: center; background: #fafafa; padding: 10px; }
+        .image-container img { max-height: 100%; max-width: 100%; object-fit: contain; }
+        .card-content { padding: 15px; }
+        .category-badge { font-size: 11px; background: #e9ecef; padding: 2px 6px; border-radius: 4px; color: #555; }
+        .item-name { font-size: 14px; margin: 8px 0; height: 36px; overflow: hidden; text-overflow: ellipsis; }
+        .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .item-code { font-size: 12px; font-weight: bold; color: #666; }
+
+        .qty-controls { display: flex; align-items: center; gap: 4px; }
+        .qty-btn { width: 26px; height: 26px; border: 1px solid #ccc; background: #eee; cursor: pointer; border-radius: 4px; }
+        .qty-input { width: 40px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px; }
+
+        /* Floating Order Bar */
+        .order-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 2px solid #0a50a0; padding: 15px 20px; display: none; justify-content: space-between; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+        .order-bar.active { display: flex; }
+        .order-bar-inputs { display: flex; gap: 10px; align-items: center; }
+        .btn-submit-order { background: #0a50a0; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { background: white; width: 90%; max-width: 400px; margin: 100px auto; padding: 20px; border-radius: 8px; position: relative; }
+        .modal-content h2 { margin-bottom: 15px; }
+        .modal-content input { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-content button { width: 100%; padding: 10px; background: #0a50a0; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 20px; }
+        .error-msg { color: red; font-size: 13px; margin-bottom: 10px; display: none; }
+    </style>
 </head>
 <body>
 
-<!-- LOGIN MODAL OVERLAY -->
-<div id="loginModal" class="login-overlay">
-  <div class="login-card">
-    <div class="login-header">
-      <img src="images/SMT_LOGO-1.png" alt="SAMRAT Logo" class="login-logo">
-      <h2>SAMRAT Catalog</h2>
-      <p>Sign in to continue</p>
-    </div>
-    <form id="loginForm" onsubmit="return handleLogin(event)">
-      <div class="form-group">
-        <label for="usernameInput">User Name</label>
-        <input type="text" id="usernameInput" required placeholder="Enter your name">
-      </div>
-      <div class="form-group">
-        <label for="passwordInput">Password</label>
-        <input type="password" id="passwordInput" required placeholder="Enter password">
-      </div>
-      <p id="loginError" class="login-error" style="display: none;">Invalid User Name or Password</p>
-      <button type="submit" class="btn-login">Login</button>
-    </form>
-  </div>
-</div>
-
-<!-- PRODUCT ADD / EDIT MODAL -->
-<div id="productModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
-    <div class="modal-content" style="background:#fff; margin:8% auto; padding:20px; width:90%; max-width:450px; border-radius:8px;">
-        <h3 id="productModalTitle">Add Product</h3>
-        <form id="productForm">
-            <input type="hidden" id="modalMode" value="ADD" />
-            
-            <label>Item Code:</label>
-            <input type="text" id="modalCode" required style="width:100%; margin-bottom:10px; padding:8px;" />
-
-            <label>Item Name:</label>
-            <input type="text" id="modalName" required style="width:100%; margin-bottom:10px; padding:8px;" />
-
-            <label>Category:</label>
-            <!-- Category Dropdown / Select -->
-                <div class="form-group">
-                  <label for="productCategory">Category</label>
-                  <select id="productCategory" class="form-control" required>
-                    <option value="">Select Category...</option>
-                  </select>
-                </div>
-
-            <label>Image URL / Path:</label>
-            <input type="text" id="modalImage" required style="width:100%; margin-bottom:15px; padding:8px;" />
-            <!-- Image Browse Input -->
-            <div class="form-group">
-              <label for="productImageFile">Product Image (PNG only)</label>
-              <input type="file" id="productImageFile" accept="image/png" class="form-control" />
-              <small id="currentImageNotice" class="text-muted"></small>
-            </div>
-
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" onclick="closeProductModal()" style="padding:8px 16px;">Cancel</button>
-                <button type="submit" style="background:#0a50a0; color:#fff; border:none; padding:8px 16px; border-radius:4px;">Save Product</button>
-            </div>
-        </form>
-    </div>
-</div>
-    
-<!-- MAIN CATALOG HEADER -->
-<header class="catalog-header">
-    <div class="brand-container">
-        <!-- Logo on the left side -->
-        <img src="images/SMT_LOGO-1.png" alt="SAMRAT Logo" class="brand-logo" id="companyLogo">
-        
-        <!-- Brand Name & Subheading -->
-        <div class="brand-text">
-            <h1 class="brand-name">SAMRAT</h1>
-            <p class="brand-subheading">Machine & Tools LLC.</p>
+    <header>
+        <h2>SMT Catalog</h2>
+        <div id="userInfo" class="user-info">
+            <span id="loggedInUserDisplay">User</span>
+            <button class="btn-logout" onclick="handleLogout()">Logout</button>
         </div>
+    </header>
+
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="Search by name, code, or category..." />
+        <select id="categoryFilter">
+            <option value="all">All Categories</option>
+        </select>
+        <button class="btn-add" onclick="openAddModal()">+ Add Product</button>
     </div>
-        
-    <div class="header-container">
-        <div class="brand-group">
-            <!-- User Info Badge & Logout moved to top header -->
-            <div id="userInfo" class="user-info-badge" style="display: none; align-items: center; gap: 10px;">
-                👤 <span id="loggedInUserDisplay"></span>
-                <button id="logoutBtn" onclick="handleLogout()" class="btn-logout">Logout</button>
-                <button id="addProductBtn" onclick="openAddModal()" style="background:#28a745; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">+ Add Product</button>
-                <button onclick="handleLogout()">Logout</button>
-            </div>
 
-            <!-- Top Prompt Status Block -->
-            <div id="top-action-prompt">
-                <span class="prompt-text">Items Selected!</span>
-                <button class="submit-order-btn btn-sm" onclick="generatePDF()">
-                    <i class="fa-solid fa-file-pdf"></i> Export Order PDF
-                </button>
-            </div>    
-        </div>
+    <div id="productGrid" class="product-grid"></div>
 
-        <div class="controls-wrapper">
-            <input type="text" id="searchInput" placeholder="Search item or code..." oninput="renderCatalog()">
-            <select id="categoryFilter" onchange="renderCatalog()">
-                <option value="all">All Categories</option>
-            </select>
-        </div>
-    </div>
-</header>
-
-    <!-- PRODUCT CATALOG GRID -->
-    <main class="catalog-container">
-        <div class="grid" id="productGrid"></div>
-    </main>
-
-    <!-- FLOATING ACTION BAR FOR ORDERS -->
+    <!-- Floating Bottom Order Bar -->
     <div id="orderBar" class="order-bar">
-        <div class="order-bar-container" style="display: flex; gap: 15px; align-items: center; width: 100%;">
-            <div class="order-summary-text">
-                Selected Items: <strong id="totalSelectedCount">0</strong>
-            </div>
-
-            <div class="order-controls" style="display: flex; gap: 10px; align-items: center; flex-grow: 1;">
-                <label for="customerNameInput"><strong>Customer Name:</strong></label>
-                <input 
-                    type="text" 
-                    id="customerNameInput" 
-                    placeholder="Enter customer or company name" 
-                    required 
-                    style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1;"
-                />
-            </div>
-
-            <div class="order-actions" style="display: flex; gap: 10px; align-items: center;">
-                <button class="submit-order-btn" onclick="generatePDF()">
-                    <i class="fa-solid fa-file-pdf"></i> Generate Order PDF
-                </button>
-                <button type="button" class="btn-clear" onclick="clearBasket()" title="Clear Basket">
-                    🗑️ Clear
-                </button>
-            </div>
+        <div>
+            <strong>Selected Items: <span id="totalSelectedCount">0</span></strong>
+        </div>
+        <div class="order-bar-inputs">
+            <input type="text" id="customerNameInput" placeholder="Enter Customer Name" required />
+            <button class="btn-submit-order" onclick="generatePDF()">Generate Order PDF</button>
         </div>
     </div>
 
-    <!-- External JS -->
-    <script src="script.js" defer></script>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>Sales Representative Login</h2>
+            <div id="loginError" class="error-msg">Invalid credentials</div>
+            <form id="loginForm">
+                <input type="text" id="usernameInput" placeholder="Username / ID" required />
+                <input type="password" id="passwordInput" placeholder="Password" required />
+                <button type="submit">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeProductModal()">&times;</span>
+            <h2 id="productModalTitle">Add New Product</h2>
+            <form id="productForm">
+                <input type="hidden" id="modalMode" value="ADD" />
+                <input type="text" id="modalCode" placeholder="Item Code (e.g. SMT-001)" required />
+                <input type="text" id="modalName" placeholder="Item Name" required />
+                <input type="text" id="modalCategory" placeholder="Category" required />
+                <input type="text" id="modalImage" placeholder="Image URL (e.g. images/SMT-001.png)" required />
+                <button type="submit">Save Product</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>

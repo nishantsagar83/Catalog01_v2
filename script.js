@@ -960,27 +960,31 @@ async function addCategory(categoryName) {
     }
 }
 
-async function updateCategory(oldName, newName) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(oldName)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: newName })
-        });
+async function updateCategory(categoryId, oldName, newName) {
+  try {
+    const response = await fetch(`https://smt-products-api.smtdxb.workers.dev/api/categories/${encodeURIComponent(categoryId)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: newName,
+        oldName: oldName
+      })
+    });
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || "Failed to update category");
-        }
-
-        await loadCatalogData();
-        await populateCategories();
-        return true;
-    } catch (error) {
-        console.error("Error updating category:", error);
-        alert(`Error: ${error.message}`);
-        return false;
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to update category");
     }
+
+    console.log("Category updated successfully:", result);
+    return result;
+  } catch (error) {
+    console.error("Error updating category:", error);
+    alert(error.message);
+  }
 }
 
 async function deleteCategory(categoryName) {

@@ -960,9 +960,20 @@ async function addCategory(categoryName) {
     }
 }
 
-async function updateCategory(categoryId, oldName, newName) {
+async function updateCategory(oldName, newName) {
   try {
-    const response = await fetch(`https://smt-products-api.smtdxb.workers.dev/api/categories/${encodeURIComponent(categoryId)}`, {
+    // 1. First, fetch all categories to find the correct ID matching oldName
+    const catResponse = await fetch(`${API_BASE_URL}/api/categories`);
+    if (!catResponse.ok) throw new Error("Failed to fetch categories");
+    const categories = await catResponse.json();
+    
+    const matchedCat = categories.find(c => c.name.toLowerCase() === oldName.toLowerCase());
+    if (!matchedCat) {
+      throw new Error(`Category "${oldName}" not found in database.`);
+    }
+
+    // 2. Send the PUT request with the proper category ID in the URL path
+    const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(matchedCat.id)}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
@@ -979,14 +990,15 @@ async function updateCategory(categoryId, oldName, newName) {
       throw new Error(result.error || "Failed to update category");
     }
 
-    console.log("Category updated successfully:", result);
-    return result;
+    await loadCatalogData();
+    await populateCategories();
+    return true;
   } catch (error) {
     console.error("Error updating category:", error);
     alert(error.message);
+    return false;
   }
 }
-
 async function deleteCategory(categoryName) {
     if (!confirm(`Are you sure you want to delete category "${categoryName}"? Any linked products will become uncategorized.`)) {
         return false;

@@ -13,7 +13,7 @@ let currentUser = null;
 
 // --- PAGINATION STATE ---
 let currentPage = 1;
-const itemsPerPage = 24; // Adjust number of items displayed per page here
+const itemsPerPage = 24;
 
 // Fallback users for local testing
 let systemUsers = [
@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (userInfo) userInfo.style.display = "inline-flex";
 
         await loadCatalogData();
-        
     } else {
         if (modal) modal.style.display = "block";
     }
@@ -233,7 +232,6 @@ function renderCatalog() {
     const totalItems = filteredProducts.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
-    // Boundary check for current page
     if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
 
@@ -241,7 +239,7 @@ function renderCatalog() {
     const endIndex = startIndex + itemsPerPage;
     const paginatedItems = filteredProducts.slice(startIndex, endIndex);
 
-    // 3. Render Product Cards for the Active Page
+    // 3. Render Product Cards for Active Page
     let htmlString = '';
 
     if (paginatedItems.length > 0) {
@@ -288,7 +286,6 @@ function renderCatalog() {
 function renderPaginationControls(totalPages, totalItems) {
     let container = document.getElementById('paginationControls');
     
-    // Dynamically create pagination container if not already in index.html
     if (!container) {
         container = document.createElement('div');
         container.id = 'paginationControls';
@@ -308,9 +305,7 @@ function renderPaginationControls(totalPages, totalItems) {
         <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="padding: 6px 12px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #f8f9fa;">&laquo; Prev</button>
     `;
 
-    // Render numbered page buttons
     for (let i = 1; i <= totalPages; i++) {
-        // Show first page, last page, current page, and adjacent pages
         if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
             const activeStyle = (i === currentPage) 
                 ? 'background: #0a50a0; color: #fff; font-weight: bold; border-color: #0a50a0;' 
@@ -702,8 +697,7 @@ function sendOrderToWhatsApp(order) {
     window.open(whatsappUrl, "_blank");
 }
 
-// --- MODAL INTERACTION & IMAGE FILE BROWSE CONTROLS ---
-
+// --- MODAL INTERACTION CONTROLS ---
 function toggleNewCategoryInput(selectElem) {
     const newCategoryInput = document.getElementById("modalNewCategory");
     if (!newCategoryInput) return;
@@ -739,7 +733,6 @@ function updateImagePreview(url) {
 }
 
 // --- MODAL HANDLERS WITH MANAGER GUARDS ---
-
 function openAddModal() {
     if (!isManager()) {
         alert("Access denied: Only Managers can add products.");
@@ -847,7 +840,6 @@ function closeProductModal() {
 }
 
 // --- PRODUCT ADD / EDIT SUBMISSION HANDLER ---
-
 async function handleProductFormSubmit(e) {
     e.preventDefault();
     const mode = document.getElementById("modalMode").value;
@@ -867,7 +859,7 @@ async function handleProductFormSubmit(e) {
     const name = document.getElementById("modalName").value.trim();
     let imageValue = document.getElementById("modalImage").value.trim();
 
-    const standardizedFilename = `${code}.png`;
+    let imageFilename = `${code}.png`;
 
     if (imageValue.startsWith("data:image/")) {
         try {
@@ -883,13 +875,15 @@ async function handleProductFormSubmit(e) {
         } catch (uploadErr) {
             console.error("R2 Upload error:", uploadErr);
         }
+    } else if (imageValue && !imageValue.startsWith("http://") && !imageValue.startsWith("https://")) {
+        imageFilename = imageValue.replace(/^(\.\/)?images\//, "");
     }
 
     const productData = {
         code: code,
         name: name,
         category: finalCategory,
-        image: standardizedFilename
+        image: imageFilename
     };
 
     try {
@@ -918,7 +912,6 @@ async function handleProductFormSubmit(e) {
 }
 
 // --- DELETE PRODUCT HANDLER ---
-
 async function handleDeleteProduct(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete products.");
@@ -939,6 +932,79 @@ async function handleDeleteProduct(code) {
             await loadCatalogData();
         } catch (err) {
             alert("Failed to delete product: " + err.message);
+        }
+    }
+}
+
+// --- DEDICATED CATEGORY MANAGEMENT FUNCTIONS ---
+
+async function addCategory(categoryName) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/categories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: categoryName })
+        });
+        
+        const result = await response.json();
+        if (!response.ok) {
+            alert(result.error || 'Failed to add category');
+            return false;
+        }
+        alert('Category added successfully!');
+        await loadCatalogData();
+        return true;
+    } catch (err) {
+        alert('Failed to add category: ' + err.message);
+        return false;
+    }
+}
+
+async function updateCategory(categoryId, newCategoryName) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/categories`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: categoryId, name: newCategoryName })
+        });
+        
+        const result = await response.json();
+        if (!response.ok) {
+            alert(result.error || 'Failed to update category');
+            return false;
+        }
+        alert('Category updated successfully!');
+        await loadCatalogData();
+        return true;
+    } catch (err) {
+        alert('Failed to update category: ' + err.message);
+        return false;
+    }
+}
+
+async function deleteCategory(categoryId) {
+    if (!isManager()) {
+        alert("Access denied: Only Managers can delete categories.");
+        return;
+    }
+
+    if (confirm("Are you sure you want to delete this category?")) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/categories?id=${encodeURIComponent(categoryId)}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                alert(result.error || 'Failed to delete category'); 
+                return;
+            }
+            
+            alert('Category deleted successfully!');
+            await loadCatalogData();
+        } catch (err) {
+            alert('Failed to delete category: ' + err.message);
         }
     }
 }

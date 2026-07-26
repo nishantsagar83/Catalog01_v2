@@ -789,17 +789,16 @@ function openAddModal() {
     if (modal) modal.style.display = "block";
 }
 
+// --- PRODUCT EDIT MODAL ---
 async function openEditModal(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can edit products.");
         return;
     }
 
-    // 1. Find the product first so we have its data ready
     const product = normalizedProducts.find(p => p.code === code);
     if (!product) return;
 
-    // 2. Await category population so options exist in the DOM before setting values
     await populateCategories();
 
     document.getElementById("productModalTitle").innerText = "Edit Product";
@@ -855,180 +854,172 @@ function closeProductModal() {
     if (modal) modal.style.display = "none";
 }
 
-// --- PRODUCT ADD / EDIT SUBMISSION HANDLER ---
-async function handleProductFormSubmit(e) {
-    e.preventDefault();
+
+// --- PRODUCT FORM SUBMIT (ADD / EDIT) ---
+async function handleProductFormSubmit(event) {
+    if (event) event.preventDefault();
+
     const mode = document.getElementById("modalMode").value;
+    const code = document.getElementById("modalCode").value.trim();
+    const name = document.getElementById("modalName").value.trim();
+    
+    const selectElem = document.getElementById("modalCategorySelect");
+    const newCatInput = document.getElementById("modalNewCategory");
+    
+    let category = selectElem.value;
+    if (category === "__NEW__") {
+        category = newCatInput.value.trim();
+    }
 
-    const catSelectValue = document.getElementById("modalCategorySelect").value;
-    const finalCategory = (catSelectValue === "__NEW__")
-        ? document.getElementById("modalNewCategory").value.trim()
-        : catSelectValue;
+    const image = document.getElementById("modalImage").value.trim() || "images/placeholder.png";
 
-    if (!finalCategory) {
-        alert("Please select or enter a valid category.");
+    if (!code || !name || !category) {
+        alert("Please fill in all required fields.");
         return;
     }
 
-    const rawCode = document.getElementById("modalCode").value.trim();
-    const code = rawCode.toUpperCase(); 
-    const name = document.getElementById("modalName").value.trim();
-    let imageValue = document.getElementById("modalImage").value.trim();
-
-    let imageFilename = `${code}.png`;
-
-    if (imageValue.startsWith("data:image/")) {
-        try {
-            const uploadRes = await fetch(`${WORKER_IMAGE_BASE}/api/upload-image`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ itemCode: code, imageData: imageValue })
-            });
-
-            if (!uploadRes.ok) {
-                console.warn("R2 upload worker returned non-200. Defaulting filename to standard R2 key.");
-            }
-        } catch (uploadErr) {
-            console.error("R2 Upload error:", uploadErr);
-        }
-    } else if (imageValue && !imageValue.startsWith("http://") && !imageValue.startsWith("https://")) {
-        imageFilename = imageValue.replace(/^(\.\/)?images\//, "");
-    }
-
-    const productData = {
+    const payload = {
         code: code,
         name: name,
-        category: finalCategory,
-        image: imageFilename
+        category: category,
+        image: image
     };
 
     try {
-        const method = (mode === "ADD") ? "POST" : "PUT";
-        
-        const response = await fetch(`${API_BASE_URL}/api/products`, {
+        let endpoint = `${API_BASE_URL}/api/products`;
+        let method = "POST";
+
+        if (mode === "EDIT") {
+            endpoint = `${API_BASE_URL}/api/products/${encodeURIComponent(code)}`;
+            method = "PUT";
+        }
+
+        const response = await fetch(endpoint, {
             method: method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                "Item Code": productData.code,
-                "Item Name": productData.name,
-                "Category": productData.category,
-                "Product Image": productData.image
-            })
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            throw new Error(`Server returned status ${response.status}`);
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Failed to save product (status: ${response.status})`);
         }
 
         closeProductModal();
         await loadCatalogData();
-    } catch (err) {
-        alert("Failed to save product: " + err.message);
+        await populateCategories();
+        
+        alert(mode === "EDIT" ? "Product updated successfully!" : "Product added successfully!");
+    } catch (error) {
+        console.error("Error saving product:", error);
+        alert(`Error: ${error.message}`);
     }
 }
 
-// --- DELETE PRODUCT HANDLER ---
+
+// --- PRODUCT DELETION ---
 async function handleDeleteProduct(code) {
     if (!isManager()) {
         alert("Access denied: Only Managers can delete products.");
         return;
     }
 
-    if (confirm(`Are you sure you want to delete item "${code}"?`)) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(code)}`, {
-                method: "DELETE"
-            });
+    if (!confirm(`Are you sure you want to delete product "${code}"?`)) {
+        return;
+    }
 
-            if (!response.ok) {
-                throw new Error(`Server returned status ${response.status}`);
-            }
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/products/${encodeURIComponent(code)}`, {
+            method: "DELETE"
+        });
 
-            delete orderBasket[code];
-            await loadCatalogData();
-        } catch (err) {
-            alert("Failed to delete product: " + err.message);
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Failed to delete product (status: ${response.status})`);
         }
+
+        delete orderBasket[code];
+        await loadCatalogData();
+        await populateCategories();
+        
+        alert("Product deleted successfully.");
+    } catch (error) {
+        console.error("Error deleting product:", error);
+        alert(`Error: ${error.message}`);
     }
 }
 
-// --- DEDICATED CATEGORY MANAGEMENT FUNCTIONS ---
 
+
+// --- CATEGORY API MANAGEMENT HELPERS ---
 async function addCategory(categoryName) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/categories`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: categoryName })
         });
-        
-        const result = await response.json();
+
         if (!response.ok) {
-            alert(result.error || 'Failed to add category');
-            return false;
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || "Failed to create category");
         }
-        alert('Category added successfully!');
-        // CRITICAL: Refresh catalog data and re-render dropdown lists across UI
-        if (typeof loadCatalogData === 'function') {
-            await loadCatalogData();
-        } else if (typeof fetchCategories === 'function') {
-            await fetchCategories();
-        }
+
+        await populateCategories();
         return true;
-    } catch (err) {
-        alert('Failed to add category: ' + err.message);
+    } catch (error) {
+        console.error("Error adding category:", error);
+        alert(`Error: ${error.message}`);
         return false;
     }
 }
 
-async function updateCategory(oldCategoryName, newCategoryName) {
+async function updateCategory(oldName, newName) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/categories`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ oldName: oldCategoryName, name: newCategoryName })
+        const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(oldName)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: newName })
         });
-        
-        const result = await response.json();
+
         if (!response.ok) {
-            alert(result.error || 'Failed to update category');
-            return false;
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || "Failed to update category");
         }
-        alert('Category updated successfully!');
-        await loadCatalogData(); // Refreshes products and populates dropdowns
+
+        await loadCatalogData();
+        await populateCategories();
         return true;
-    } catch (err) {
-        alert('Failed to update category: ' + err.message);
+    } catch (error) {
+        console.error("Error updating category:", error);
+        alert(`Error: ${error.message}`);
         return false;
     }
 }
 
 async function deleteCategory(categoryName) {
-    if (!isManager()) {
-        alert("Access denied: Only Managers can delete categories.");
+    if (!confirm(`Are you sure you want to delete category "${categoryName}"? Any linked products will become uncategorized.`)) {
         return false;
     }
 
-    if (confirm(`Are you sure you want to delete category "${categoryName}"?`)) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/categories?name=${encodeURIComponent(categoryName)}`, {
-                method: 'DELETE'
-            });
-            
-            const result = await response.json();
-            
-            if (!response.ok) {
-                alert(result.error || 'Failed to delete category'); 
-                return false;
-            }
-            
-            alert('Category deleted successfully!');
-            await loadCatalogData(); // Refreshes products and populates dropdowns
-            return true;
-        } catch (err) {
-            alert('Failed to delete category: ' + err.message);
-            return false;
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(categoryName)}`, {
+            method: "DELETE"
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || "Failed to delete category");
         }
+
+        await loadCatalogData();
+        await populateCategories();
+        return true;
+    } catch (error) {
+        console.error("Error deleting category:", error);
+        alert(`Error: ${error.message}`);
+        return false;
     }
-    return false;
 }

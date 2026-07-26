@@ -161,6 +161,15 @@ function populateCategories() {
     }
 }
 
+// --- ROLE HELPER ---
+function isManager() {
+    if (!currentUser) return false;
+    const role = currentUser["Role"] || currentUser.role || "";
+    return role.toString().trim().toLowerCase() === "manager";
+}
+
+
+// --- RENDER CATALOG WITH ROLE-BASED VISIBILITY ---
 function renderCatalog() {
     const grid = document.getElementById('productGrid');
     if (!grid) return;
@@ -170,7 +179,15 @@ function renderCatalog() {
 
     const selectedCategory = categoryElem ? categoryElem.value : 'all';
     const searchTerm = searchElem ? searchElem.value.toLowerCase().trim() : '';
-    const isLoggedIn = currentUser !== null;
+
+    // Check if logged-in user is a Manager
+    const userIsManager = isManager();
+
+    // Toggle main "+ Add Product" button visibility
+    const addBtn = document.querySelector('.btn-add');
+    if (addBtn) {
+        addBtn.style.display = userIsManager ? 'inline-block' : 'none';
+    }
 
     let htmlString = '';
 
@@ -206,7 +223,7 @@ function renderCatalog() {
                             </div>
                         </div>
 
-                        ${isLoggedIn ? `
+                        ${userIsManager ? `
                             <div class="admin-actions" style="margin-top: 10px; display: flex; gap: 8px;">
                                 <button type="button" class="btn-edit" onclick="openEditModal('${item.code}')" style="background:#0a50a0; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; flex:1;">Edit</button>
                                 <button type="button" class="btn-delete" onclick="handleDeleteProduct('${item.code}')" style="background:#d9534f; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; flex:1;">Delete</button>
@@ -221,6 +238,7 @@ function renderCatalog() {
     grid.innerHTML = htmlString || '<p class="no-results">No products found.</p>';
     updateOrderBar();
 }
+
 
 // --- BASKET & QUANTITY CONTROLS ---
 function adjustQty(itemCode, delta) {
@@ -621,7 +639,15 @@ function updateImagePreview(url) {
     }
 }
 
+
+// --- MODAL HANDLERS WITH MANAGER GUARDS ---
+
 function openAddModal() {
+    if (!isManager()) {
+        alert("Access denied: Only Managers can add products.");
+        return;
+    }
+
     populateCategories(); // Refresh modal dropdown options
     
     document.getElementById("productModalTitle").innerText = "Add New Product";
@@ -637,7 +663,7 @@ function openAddModal() {
     if (nameInput) nameInput.value = "";
     
     const catSelect = document.getElementById("modalCategorySelect");
-    if (catSelect) catSelect.selectedIndex = 0; // Safely set to first default option
+    if (catSelect) catSelect.selectedIndex = 0;
     
     const newCatInput = document.getElementById("modalNewCategory");
     if (newCatInput) {
@@ -658,8 +684,12 @@ function openAddModal() {
     if (modal) modal.style.display = "block";
 }
 
-
 function openEditModal(code) {
+    if (!isManager()) {
+        alert("Access denied: Only Managers can edit products.");
+        return;
+    }
+
     populateCategories(); // Refresh modal dropdown options
     
     const product = normalizedProducts.find(p => p.code === code);
@@ -712,6 +742,9 @@ function openEditModal(code) {
     const modal = document.getElementById("productModal");
     if (modal) modal.style.display = "block";
 }
+
+
+
 function closeProductModal() {
     document.getElementById("productModal").style.display = "none";
 }
@@ -769,6 +802,11 @@ async function handleProductFormSubmit(e) {
 }
 
 async function handleDeleteProduct(code) {
+    if (!isManager()) {
+        alert("Access denied: Only Managers can delete products.");
+        return;
+    }
+
     if (confirm(`Are you sure you want to delete item "${code}"?`)) {
         try {
             await fetch(`${API_BASE_URL}/api/products?code=${encodeURIComponent(code)}`, {

@@ -16,5 +16,12 @@
       "binding": "IMAGES_BUCKET",
       "bucket_name": "catalog-images"
     }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "smt-catalog-db",
+      "database_id": "665e5390-0f7c-4645-b73d-61e3c0aa79fb"
+    }
   ]
 }

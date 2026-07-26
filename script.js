@@ -1026,18 +1026,33 @@ async function updateCategory(oldName, newName) {
     return false;
   }
 }
+
+
+
 async function deleteCategory(categoryName) {
     if (!confirm(`Are you sure you want to delete category "${categoryName}"? Any linked products will become uncategorized.`)) {
         return false;
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(categoryName)}`, {
+        // 1. Fetch categories to find the ID matching the category name
+        const catResponse = await fetch(`${API_BASE_URL}/api/categories`);
+        if (!catResponse.ok) throw new Error("Failed to fetch categories");
+        const categories = await catResponse.json();
+
+        const matchedCat = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+        if (!matchedCat) {
+            throw new Error(`Category "${categoryName}" not found.`);
+        }
+
+        // 2. Send the DELETE request using the proper category ID in the URL path
+        const response = await fetch(`${API_BASE_URL}/api/categories/${encodeURIComponent(matchedCat.id)}`, {
             method: "DELETE"
         });
 
+        const err = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
             throw new Error(err.error || "Failed to delete category");
         }
 

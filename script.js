@@ -780,11 +780,16 @@ async function handleProductFormSubmit(e) {
         return;
     }
 
-    const code = document.getElementById("modalCode").value.trim();
+    // 1. Force Item Code to UPPERCASE and TRIM spaces (e.g. "0100CC")
+    const rawCode = document.getElementById("modalCode").value.trim();
+    const code = rawCode.toUpperCase(); 
     const name = document.getElementById("modalName").value.trim();
     let imageValue = document.getElementById("modalImage").value.trim();
 
-    // If local image base64 provided via browse, upload directly to R2 first
+    // Standardized R2 key format: "0100CC.png"
+    const standardizedFilename = `${code}.png`;
+
+    // 2. Upload Base64 image data to R2 Bucket if a new file was chosen
     if (imageValue.startsWith("data:image/")) {
         try {
             const uploadRes = await fetch(`${WORKER_IMAGE_BASE}/api/upload-image`, {
@@ -793,54 +798,42 @@ async function handleProductFormSubmit(e) {
                 body: JSON.stringify({ itemCode: code, imageData: imageValue })
             });
 
-            if (uploadRes.ok) {
-                const uploadData = await uploadRes.json();
-                if (uploadData.imageUrl) {
-                    imageValue = uploadData.imageUrl;
-                }
-            } else {
-                console.warn("Failed to upload image binary to R2. Proceeding with filename path.");
-                imageValue = `${code}.png`;
+            if (!uploadRes.ok) {
+                console.warn("R2 upload worker returned non-200. Defaulting filename to standard R2 key.");
             }
         } catch (uploadErr) {
             console.error("R2 Upload error:", uploadErr);
-            imageValue = `${code}.png`;
         }
     }
 
+    // 3. Save STRICTLY the filename string (e.g., "0100CC.png") in D1 Database
     const productData = {
         code: code,
         name: name,
         category: finalCategory,
-        image: imageValue
+        image: standardizedFilename
     };
 
     try {
-        if (mode === "ADD") {
-            await fetch(`${API_BASE_URL}/api/products`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    "Item Code": productData.code,
-                    "Item Name": productData.name,
-                    "Category": productData.category,
-                    "Product Image": productData.image
-                })
-            });
-        } else {
-            await fetch(`${API_BASE_URL}/api/products`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    "Item Code": productData.code,
-                    "Item Name": productData.name,
-                    "Category": productData.category,
-                    "Product Image": productData.image
-                })
-            });
+        const method = (mode === "ADD") ? "POST" : "PUT";
+        
+        const response = await fetch(`${API_BASE_URL}/api/products`, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                "Item Code": productData.code,
+                "Item Name": productData.name,
+                "Category": productData.category,
+                "Product Image": productData.image
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server returned status ${response.status}`);
         }
+
         closeProductModal();
-        await loadCatalogData(); // Sync UI with updated Cloudflare D1 database
+        await loadCatalogData(); // Re-fetch updated records from D1 and refresh UI
     } catch (err) {
         alert("Failed to save product: " + err.message);
     }
